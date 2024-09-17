@@ -248,7 +248,7 @@ namespace Oxide.Plugins
             var playersList = _storedData.PlayersList;
             if (playersList.Any())
             {
-                var usersToRemove = Pool.GetList<string>();
+                var usersToRemove = Pool.Get<List<string>>();
                 foreach (var kvp in playersList)
                 {
                     var userID = kvp.Key;
@@ -288,13 +288,13 @@ namespace Oxide.Plugins
                 }
                 foreach (string userID in usersToRemove)
                     playersList.Remove(userID);
-                Pool.FreeList(ref usersToRemove);
+                Pool.FreeUnmanaged(ref usersToRemove);
             }
             
             var groupsList = _storedData.GroupsList;
             if (groupsList.Any())
             {
-                var groupsToRemove = Pool.GetList<string>();
+                var groupsToRemove = Pool.Get<List<string>>();
                 foreach (var kvp in groupsList)
                 {
                     var groupID = kvp.Key;
@@ -320,7 +320,7 @@ namespace Oxide.Plugins
                 }
                 foreach (string userID in groupsToRemove)
                     groupsList.Remove(userID);
-                Pool.FreeList(ref groupsToRemove);
+                Pool.FreeUnmanaged(ref groupsToRemove);
             }
         }
         
