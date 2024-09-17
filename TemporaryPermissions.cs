@@ -15,6 +15,8 @@
 *      https://github.com/IIIaKa
 *      https://umod.org/user/IIIaKa
 *      https://codefling.com/iiiaka
+*      https://www.patreon.com/iiiaka
+*      https://boosty.to/iiiaka
 *  GitHub repository page: https://github.com/IIIaKa/TemporaryPermissions
 *  Codefling plugin page: https://codefling.com/plugins/temporary-permissions
 *  Codefling license: https://codefling.com/plugins/temporary-permissions?tab=downloads_field_4
@@ -1212,7 +1214,7 @@ namespace Oxide.Plugins
                         replyKey = "MsgUserGroupWrongFormat";
                         goto exit;
                     }
-                    permission.GrantUserPermission(target.Id, args[3], null);
+                    permission.AddUserGroup(target.Id, args[2]);
                     replyKey = "MsgUserGroupAdded";
                     replyArgs[0] = target.Name;
                     replyArgs[1] = args[2];
