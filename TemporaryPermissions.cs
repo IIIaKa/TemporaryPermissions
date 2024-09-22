@@ -62,7 +62,7 @@ namespace Oxide.Plugins
             [JsonProperty(PropertyName = "Expiration Check Interval")]
             public float CheckInterval = 1f;
             
-            [JsonProperty(PropertyName = "Is it worth removing temporary permissions and groups when unloading the plugin or when a player disconnects?")]
+            [JsonProperty(PropertyName = "Is it worth removing temporary permissions and temporary groups when unloading the plugin?")]
             public bool RemoveOnUnload = true;
             
             [JsonProperty(PropertyName = "Is it worth using console logging?")]
@@ -191,56 +191,33 @@ namespace Oxide.Plugins
                     PrintWarning("Wipe detected! Resetting all temporary permissions and groups.");
                 }
             }
-            CheckForUpdates();
+            CheckForExpiration();
             yield return new WaitForSeconds(1);
-            var utcNow = DateTime.UtcNow;
-            if (_config.RemoveOnUnload)
+            string userID;
+            foreach (var kvp in _storedData.PlayersList)
             {
-                foreach (var player in BasePlayer.activePlayerList)
-                    GrantOnConnect(player.UserIDString, utcNow);
-            }
-            else
-            {
-                foreach (var kvp in _storedData.PlayersList)
-                    GrantOnConnect(kvp.Key, utcNow);
+                userID = kvp.Key;
+                playerData = kvp.Value;
+                foreach (var tempPerm in playerData.PermissionsList)
+                    permission.GrantUserPermission(userID, tempPerm.Name, null);
+                foreach (var tempGroup in playerData.GroupsList)
+                    permission.AddUserGroup(userID, tempGroup.Name);
             }
             foreach (var groupName in permission.GetGroups())
             {
                 if (!_storedData.GroupsList.TryGetValue(groupName, out var groupData)) continue;
                 foreach (var tempPerm in groupData.PermissionsList)
-                {
-                    if (!tempPerm.AlreadyRemoved && tempPerm.ExpireDate > utcNow)
-                        permission.GrantGroupPermission(groupName, tempPerm.Name, null);
-                }
+                    permission.GrantGroupPermission(groupName, tempPerm.Name, null);
             }
-            _updatesTimer = timer.Every(_config.CheckInterval, CheckForUpdates);
-            if (_config.RemoveOnUnload)
-            {
-                Subscribe(nameof(CanBypassQueue));
-                Subscribe(nameof(OnPlayerDisconnected));
-            }
+            _updatesTimer = timer.Every(_config.CheckInterval, CheckForExpiration);
             Subscribe(nameof(OnServerCommand));
+            Subscribe(nameof(OnServerSave));
             _isReady = true;
             yield return new WaitForSeconds(1);
             Interface.CallHook("OnTemporaryPermissionsLoaded");
         }
         
-        private void GrantOnConnect(string userID, DateTime utcNow)
-        {
-            if (!_storedData.PlayersList.TryGetValue(userID, out var playerData)) return;
-            foreach (var tempPerm in playerData.PermissionsList)
-            {
-                if (!tempPerm.AlreadyRemoved && tempPerm.ExpireDate > utcNow)
-                    permission.GrantUserPermission(userID, tempPerm.Name, null);
-            }
-            foreach (var tempGroup in playerData.GroupsList)
-            {
-                if (!tempGroup.AlreadyRemoved && tempGroup.ExpireDate > utcNow)
-                    permission.AddUserGroup(userID, tempGroup.Name);
-            }
-        }
-        
-        private void CheckForUpdates()
+        private void CheckForExpiration()
         {
             var utcNow = DateTime.UtcNow;
             bool isExpired = false;
@@ -1036,17 +1013,6 @@ namespace Oxide.Plugins
         #endregion
 
         #region ~Oxide Hooks~
-        void CanBypassQueue(Network.Connection connection) => GrantOnConnect(connection.userid.ToString(), DateTime.UtcNow);
-        
-        void OnPlayerDisconnected(BasePlayer player, string reason)
-        {
-            if (!_storedData.PlayersList.TryGetValue(player.UserIDString, out var playerData)) return;
-            foreach (var tempPerm in playerData.PermissionsList)
-                permission.RevokeUserPermission(player.UserIDString, tempPerm.Name);
-            foreach (var tempGroup in playerData.GroupsList)
-                permission.RemoveUserGroup(player.UserIDString, tempGroup.Name);
-        }
-        
         void OnServerCommand(ConsoleSystem.Arg arg)
         {
             if (CommandsGrant.Contains(arg.cmd.FullName))
@@ -1059,9 +1025,8 @@ namespace Oxide.Plugins
         
         void Init()
         {
-            Unsubscribe(nameof(CanBypassQueue));
-            Unsubscribe(nameof(OnPlayerDisconnected));
             Unsubscribe(nameof(OnServerCommand));
+            Unsubscribe(nameof(OnServerSave));
             permission.RegisterPermission(PERMISSION_ADMIN, this);
             AddCovalenceCommand(_config.Command, nameof(TemporaryPermissions_Command));
             _storedData = Interface.Oxide.DataFileSystem.ReadObject<StoredData>(Name);
@@ -1252,6 +1217,7 @@ namespace Oxide.Plugins
         #region ~Unload~
         void Unload()
         {
+            Unsubscribe(nameof(OnServerSave));
             if (_updatesTimer != null)
                 _updatesTimer.Destroy();
             if (_config.RemoveOnUnload)
@@ -1321,7 +1287,7 @@ namespace Oxide.Plugins
 
         public class TemporaryPermission
         {
-            public string Name { get; private set; } = string.Empty;
+            [JsonProperty] public string Name { get; private set; } = string.Empty;
             public DateTime AssignedDate { get; set; }
             public DateTime ExpireDate { get; set; }
             [JsonIgnore] public bool AlreadyRemoved { get; set; } = false;
