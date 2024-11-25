@@ -1,22 +1,23 @@
 # Temporary Permissions
 
-Useful plugin for managing **temporary permissions**, **temporary groups** and **temporary permissions for groups**. This is done through **chat commands**, built-in **Oxide commands**, and **API methods**.
+Useful plugin for managing **temporary permissions**, **temporary groups** and **temporary permissions for groups**. This is done through **chat commands**, built-in **Oxide commands**, and **API methods**.<br />
 **Note:** The dates is in **UTC** format.
 
 ## Contacts
-**Telegram:** https://t.me/iiiaka
-**Discord:** @iiiaka
-**GitHub:** https://github.com/IIIaKa
-**uMod:** https://umod.org/user/IIIaKa
-**Codefling:** https://codefling.com/iiiaka
-**LoneDesign:** https://lone.design/vendor/iiiaka/
-**GitHub repository page:** https://github.com/IIIaKa/TemporaryPermissions
+
+- **Telegram:** https://t.me/iiiaka
+- **Discord:** @iiiaka
+- **GitHub:** https://github.com/IIIaKa
+- **uMod:** https://umod.org/user/IIIaKa
+- **Codefling:** https://codefling.com/iiiaka
+- **LoneDesign:** https://lone.design/vendor/iiiaka/
+- **GitHub repository page:** https://github.com/IIIaKa/TemporaryPermissions
 
 ## Donations
 
-**USDT TRC20:** `TLN9Tsrdmt96yFCXZTfh4NLtyzWYGkqTA3`  
-**USDT TON:** `UQDma5Ovkk7M9Qve-4P2njmrgSXZQdACU0gLCGNEgkXDlngn`  
-**TON:** `UQDma5Ovkk7M9Qve-4P2njmrgSXZQdACU0gLCGNEgkXDlngn`
+- **USDT TRC20:** `TLN9Tsrdmt96yFCXZTfh4NLtyzWYGkqTA3`
+- **USDT TON:** `UQDma5Ovkk7M9Qve-4P2njmrgSXZQdACU0gLCGNEgkXDlngn`
+- **TON:** `UQDma5Ovkk7M9Qve-4P2njmrgSXZQdACU0gLCGNEgkXDlngn`
 
 ## Features
 
@@ -97,25 +98,25 @@ Useful plugin for managing **temporary permissions**, **temporary groups** and *
 - **grant** - **Grants** a temporary permission to a **player** or **group**.
   - **user**
     - **<displayName|userID> realpve.vip wipe** - **Grants** a temporary permission to a player until the next wipe by specifying **the player's name** or **Id**, **the permission name** and the word "**wipe**";
-    - **<displayName|userID> realpve.vip 3600 true/false** - **Grants** a temporary permission to a player by specifying **the player's name** or **Id**, **the permission name**, **the number of seconds** and **true/false**(optional).  
-      If **true**, the specified seconds will count from **the current moment**, otherwise(default), they will be added to the existing time;
-    - **<displayName|userID> realpve.vip "2024-08-19 17:57" "2024-08-19 16:57"** - **Grants** a temporary permission to a player by specifying **the player's name** or **Id**, **the permission name**, **the expiration date** and **the assigned date**(optional).  
-      If **not specified**, the assigned date will default to **the current date**, otherwise, it will be set to the provided date.
+    - **<displayName|userID> realpve.vip 3600 true/false** - **Grants** a temporary permission to a player by specifying **the player's name** or **Id**, **the permission name**, **the number of seconds** and **true/false**(optional).<br />
+    If **true**, the specified seconds will count from **the current moment**, otherwise(default), they will be added to the existing time;
+    - **<displayName|userID> realpve.vip "2024-08-19 17:57" "2024-08-19 16:57"** - **Grants** a temporary permission to a player by specifying **the player's name** or **Id**, **the permission name**, **the expiration date** and **the assigned date**(optional).<br />
+    If **not specified**, the assigned date will default to **the current date**, otherwise, it will be set to the provided date.
   - **group**
     - **<groupName> realpve.vip wipe** - **Grants** a temporary permission to a group until the next wipe by specifying **the group's name**, **the permission name** and the word "**wipe**";
-    - **<groupName> realpve.vip 3600 true/false** - **Grants** a temporary permission to a group by specifying **the group's name**, **the permission name**, **the number of seconds**, and **true/false**(optional).  
-      If **true**, the specified seconds will count from **the current moment**, otherwise(default), they will be added to the existing time;
-    - **<groupName> realpve.vip "2024-08-19 17:57" "2024-08-19 16:57"** - **Grants** a temporary permission to a group by specifying **the group's name**, **the permission name**, **the expiration date** and **the assigned date**(optional).  
-      If **not specified**, the assigned date will default to **the current date**, otherwise, it will be set to the provided date.
+    - **<groupName> realpve.vip 3600 true/false** - **Grants** a temporary permission to a group by specifying **the group's name**, **the permission name**, **the number of seconds**, and **true/false**(optional).<br />
+    If **true**, the specified seconds will count from **the current moment**, otherwise(default), they will be added to the existing time;
+    - **<groupName> realpve.vip "2024-08-19 17:57" "2024-08-19 16:57"** - **Grants** a temporary permission to a group by specifying **the group's name**, **the permission name**, **the expiration date** and **the assigned date**(optional).<br />
+    If **not specified**, the assigned date will default to **the current date**, otherwise, it will be set to the provided date.
 - **revoke** - **Revokes** a temporary permission from a **player** or **group**.
   - **user <displayName|userID> realpve.vip** - **Revokes** a temporary permission from a player by specifying **the player's name** or **Id** and **the permission name**;
   - **group <groupName> realpve.vip** - **Revokes** a temporary permission from a group by specifying **the group's name** and **the permission name**.
 - **add** - Temporary **addition** of a **player to a group**.
   - **<displayName|userID> <groupName> wipe** - Temporary **addition** of a player to a group until the next wipe by specifying **the player's name** or **Id**, **the group name** and the word "**wipe**";
-  - **<displayName|userID> <groupName> 3600 true/false** - Temporary **addition** of a player to a group by specifying **the player's name** or **Id**, **the group name**, **the number of seconds**, and **true/false**(optional).  
-    If **true**, the specified seconds will count from **the current moment**, otherwise(default), they will be added to the existing time;
-  - **<displayName|userID> <groupName> "2024-08-19 17:57" "2024-08-19 16:57"** - Temporary **addition** of a player to a group by specifying **the player's name** or **Id**, **the group name**, **the expiration date** and **the assigned date**(optional).  
-    If **not specified**, the assigned date will default to **the current date**, otherwise, it will be set to the provided date.
+  - **<displayName|userID> <groupName> 3600 true/false** - Temporary **addition** of a player to a group by specifying **the player's name** or **Id**, **the group name**, **the number of seconds**, and **true/false**(optional).<br />
+  If **true**, the specified seconds will count from **the current moment**, otherwise(default), they will be added to the existing time;
+  - **<displayName|userID> <groupName> "2024-08-19 17:57" "2024-08-19 16:57"** - Temporary **addition** of a player to a group by specifying **the player's name** or **Id**, **the group name**, **the expiration date** and **the assigned date**(optional).<br />
+  If **not specified**, the assigned date will default to **the current date**, otherwise, it will be set to the provided date.
 - **remove <displayName|userID> <groupName>** - **Removal** of a **player from a temporary group** by specifying **the player's name** or **Id** and **the group name**.
 
 **Example:**
@@ -125,13 +126,13 @@ Useful plugin for managing **temporary permissions**, **temporary groups** and *
 
 **Note:** To access the commands, the player must be an admin(**console** or **owner**) or have the **`temporarypermissions.admin`** permission.  
 
-**P.S.** Templates for the commands above can also be used with **existing console commands**.  
+**P.S.** Templates for the commands above can also be used with **existing console commands**.<br />
 For example: **`o.grant user iiiaka realpve.vip 3600 true`**
 
 ## Developer Hooks
 
 ### OnTemporaryPermissionsLoaded
-Called after the **TemporaryPermissions** plugin is **fully loaded** and **ready**.  
+Called after the **TemporaryPermissions** plugin is **fully loaded** and **ready**.<br />
 No return behaviour.
 
 ```csharp
@@ -142,7 +143,7 @@ void OnTemporaryPermissionsLoaded(VersionNumber version = default)
 ```
 
 ### OnTemporaryPermissionGranted
-Called after the **player** has been **granted** a temporary permission.  
+Called after the **player** has been **granted** a temporary permission.<br />
 No return behaviour.
 
 ```csharp
@@ -153,7 +154,7 @@ void OnTemporaryPermissionGranted(string userID, string perm, DateTime expireDat
 ```
 
 ### OnTemporaryPermissionUpdated
-Called after the **player's** temporary permission has been **updated**.  
+Called after the **player's** temporary permission has been **updated**.<br />
 No return behaviour.
 
 ```csharp
@@ -164,7 +165,7 @@ void OnTemporaryPermissionUpdated(string userID, string perm, DateTime expireDat
 ```
 
 ### OnTemporaryPermissionRevoked
-Called after the **player's** temporary permission has **expired** or been **revoked**.  
+Called after the **player's** temporary permission has **expired** or been **revoked**.<br />
 No return behaviour.
 
 ```csharp
@@ -175,7 +176,7 @@ void OnTemporaryPermissionRevoked(string userID, string perm, bool isExpired)
 ```
 
 ### OnTemporaryGroupAdded
-Called after the **player** has been temporarily **added to the group**.  
+Called after the **player** has been temporarily **added to the group**.<br />
 No return behaviour.
 
 ```csharp
@@ -186,7 +187,7 @@ void OnTemporaryGroupAdded(string userID, string groupName, DateTime expireDate,
 ```
 
 ### OnTemporaryGroupUpdated
-Called after the **player's** temporary **group** has been **updated**.  
+Called after the **player's** temporary **group** has been **updated**.<br />
 No return behaviour.
 
 ```csharp
@@ -197,7 +198,7 @@ void OnTemporaryGroupUpdated(string userID, string groupName, DateTime expireDat
 ```
 
 ### OnTemporaryGroupRemoved
-Called after the **player's** temporary **group** has **expired** or been **removed**.  
+Called after the **player's** temporary **group** has **expired** or been **removed**.<br />
 No return behaviour.
 
 ```csharp
@@ -208,7 +209,7 @@ void OnTemporaryGroupRemoved(string userID, string groupName, bool isExpired)
 ```
 
 ### OnGroupTemporaryPermissionGranted
-Called after the **group** has been **granted** a temporary permission.  
+Called after the **group** has been **granted** a temporary permission.<br />
 No return behaviour.
 
 ```csharp
@@ -219,7 +220,7 @@ void OnGroupTemporaryPermissionGranted(string groupName, string perm, DateTime e
 ```
 
 ### OnGroupTemporaryPermissionUpdated
-Called after the **group's** temporary permission has been **updated**.  
+Called after the **group's** temporary permission has been **updated**.<br />
 No return behaviour.
 
 ```csharp
@@ -230,7 +231,7 @@ void OnGroupTemporaryPermissionUpdated(string groupName, string perm, DateTime e
 ```
 
 ### OnGroupTemporaryPermissionRevoked
-Called after the **group's** temporary permission has **expired** or been **revoked**.  
+Called after the **group's** temporary permission has **expired** or been **revoked**.<br />
 No return behaviour.
 
 ```csharp
@@ -281,7 +282,7 @@ There are 28 methods:
   - **AllGroupsGetAllPermissions**
 
 ### IsReady
-Used to check if the **TemporaryPermissions** plugin is **loaded** and **ready** to work.  
+Used to check if the **TemporaryPermissions** plugin is **loaded** and **ready** to work.<br />
 The **IsReady** method returns **true if it is ready**, or **null if it is not**.
 
 ```csharp
@@ -289,8 +290,8 @@ The **IsReady** method returns **true if it is ready**, or **null if it is not**
 ```
 
 ### GrantUserPermission
-Used to **grant a temporary permission** to a **player**.
-Returns **true if the grant was successful**.  
+Used to **grant a temporary permission** to a **player**.<br />
+Returns **true if the grant was successful**.<br />
 To call the **GrantUserPermission** method, you need to pass 5 parameters, 3 of which are optional:
 1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
 2. <string>**permName** - **The name of the permission**;
@@ -306,8 +307,8 @@ To call the **GrantUserPermission** method, you need to pass 5 parameters, 3 of 
 ```
 
 ### RevokeUserPermission
-Used to **revoke a temporary permission** from a **player**.
-Returns **true** if the **revoke was successful**.  
+Used to **revoke a temporary permission** from a **player**.<br />
+Returns **true** if the **revoke was successful**.<br />
 To call the **RevokeUserPermission** method, you need to pass 2 parameters:
 1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
 2. <string>**permName** - **The name of the permission**.
@@ -317,8 +318,8 @@ To call the **RevokeUserPermission** method, you need to pass 2 parameters:
 ```
 
 ### UserHasPermission
-Used to **check** if a **player has a temporary permission**.
-Returns **true** if the **player has the specified temporary permission**.  
+Used to **check** if a **player has a temporary permission**.<br />
+Returns **true** if the **player has the specified temporary permission**.<br />
 To call the **UserHasPermission** method, you need to pass 2 parameters:
 1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
 2. <string>**permName** - **The name of the permission**.
@@ -328,8 +329,8 @@ To call the **UserHasPermission** method, you need to pass 2 parameters:
 ```
 
 ### GrantActiveUsersPermission
-Used to **temporarily grant a permission** to **all online players**.
-Returns the <int>**number of successful grants of temporary permissions to players**.  
+Used to **temporarily grant a permission** to **all online players**.<br />
+Returns the <int>**number of successful grants of temporary permissions to players**.<br />
 To call the **GrantActiveUsersPermission** method, you need to pass 3 parameters, 2 of which is optional:
 1. <string>**permName** - **The name of the permission**;
 2. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
@@ -343,8 +344,8 @@ To call the **GrantActiveUsersPermission** method, you need to pass 3 parameters
 ```
 
 ### GrantAllUsersPermission
-Used to **grant a temporary permission** to **all players**.
-Returns the <int>**number of successful grants of temporary permissions to players**.  
+Used to **grant a temporary permission** to **all players**.<br />
+Returns the <int>**number of successful grants of temporary permissions to players**.<br />
 To call the **GrantAllUsersPermission** method, you need to pass 3 parameters, 2 of which is optional:
 1. <string>**permName** - **The name of the permission**;
 2. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
@@ -358,8 +359,8 @@ To call the **GrantAllUsersPermission** method, you need to pass 3 parameters, 2
 ```
 
 ### RevokeActiveUsersPermission
-Used to **revoke a temporary permission** from **all online players**.
-Returns the <int>**number of successful revokes of temporary permissions to players**.  
+Used to **revoke a temporary permission** from **all online players**.<br />
+Returns the <int>**number of successful revokes of temporary permissions to players**.<br />
 To call the **RevokeActiveUsersPermission** method, you need to pass 1 parameter:
 1. <string>**permName** - **The name of the permission**.
 
@@ -368,8 +369,8 @@ To call the **RevokeActiveUsersPermission** method, you need to pass 1 parameter
 ```
 
 ### RevokeAllUsersPermission
-Used to **revoke a temporary permission** from **all players**.
-Returns the <int>**number of successful revokes of temporary permissions to players**.  
+Used to **revoke a temporary permission** from **all players**.<br />
+Returns the <int>**number of successful revokes of temporary permissions to players**.<br />
 To call the **RevokeAllUsersPermission** method, you need to pass 1 parameter:
 1. <string>**permName** - **The name of the permission**.
 
@@ -378,9 +379,9 @@ To call the **RevokeAllUsersPermission** method, you need to pass 1 parameter:
 ```
 
 ### UserGetAllPermissions
-Used to **retrieve all temporary permissions** of a **player**.
-Returns a **Dictionary<string, DateTime[]>** where the **key is the permission name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.
-If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.
+Used to **retrieve all temporary permissions** of a **player**.<br />
+Returns a **Dictionary<string, DateTime[]>** where the **key is the permission name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.<br />
+If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.<br />
 To call the **UserGetAllPermissions** method, you need to pass 1 parameter:
 1. <string>**playerID** - The player's **Id**.
 
@@ -389,8 +390,8 @@ To call the **UserGetAllPermissions** method, you need to pass 1 parameter:
 ```
 
 ### ActiveUsersGetAllPermissions
-Used to **retrieve all temporary permissions** of **all online players** who **have temporary permissions**.
-Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is userID** and the **value is another Dictionary<string, DateTime[]>**, where the **key is the permission name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.
+Used to **retrieve all temporary permissions** of **all online players** who **have temporary permissions**.<br />
+Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is userID** and the **value is another Dictionary<string, DateTime[]>**, where the **key is the permission name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.<br />
 If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.
 
 ```csharp
@@ -398,8 +399,8 @@ If **the expiration date** is set to **default**, it means the permission is val
 ```
 
 ### AllUsersGetAllPermissions
-Used to **retrieve all temporary permissions** of **all players** who **have temporary permissions**.
-Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is userID** and the **value is another Dictionary<string, DateTime[]>**, where the **key is the permission name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.
+Used to **retrieve all temporary permissions** of **all players** who **have temporary permissions**.<br />
+Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is userID** and the **value is another Dictionary<string, DateTime[]>**, where the **key is the permission name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.<br />
 If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.
 
 ```csharp
@@ -407,8 +408,8 @@ If **the expiration date** is set to **default**, it means the permission is val
 ```
 
 ### AddUserGroup
-Used to **temporarily add a player to a group**.
-Returns **true** if the **addition was successful**.  
+Used to **temporarily add a player to a group**.<br />
+Returns **true** if the **addition was successful**.<br />
 To call the **AddUserGroup** method, you need to pass 5 parameters, 3 of which are optional:
 1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
 2. <string>**groupName** - **The name of the group**;
@@ -424,8 +425,8 @@ To call the **AddUserGroup** method, you need to pass 5 parameters, 3 of which a
 ```
 
 ### RemoveUserGroup
-Used to **remove a temporary group from a player**.
-Returns **true** if the **removal was successful**.  
+Used to **remove a temporary group from a player**.<br />
+Returns **true** if the **removal was successful**.<br />
 To call the **RemoveUserGroup** method, you need to pass 2 parameters:
 1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
 2. <string>**groupName** - **The name of the group**.
@@ -435,8 +436,8 @@ To call the **RemoveUserGroup** method, you need to pass 2 parameters:
 ```
 
 ### UserHasGroup
-Used to **check** if a **player has a temporary group**.
-Returns **true** if the **player has the specified temporary group**.  
+Used to **check** if a **player has a temporary group**.<br />
+Returns **true** if the **player has the specified temporary group**.<br />
 To call the **UserHasGroup** method, you need to pass 2 parameters:
 1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
 2. <string>**groupName** - **The name of the group**.
@@ -446,8 +447,8 @@ To call the **UserHasGroup** method, you need to pass 2 parameters:
 ```
 
 ### AddActiveUsersGroup
-Used to **temporarily add a group** to **all online players**.
-Returns the <int>**number of successful additions of the temporary group to players**.  
+Used to **temporarily add a group** to **all online players**.<br />
+Returns the <int>**number of successful additions of the temporary group to players**.<br />
 To call the **AddActiveUsersGroup** method, you need to pass 3 parameters, 2 of which is optional:
 1. <string>**groupName** - **The name of the group**;
 2. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the group** will be valid **until the wipe**;
@@ -461,8 +462,8 @@ To call the **AddActiveUsersGroup** method, you need to pass 3 parameters, 2 of 
 ```
 
 ### AddAllUsersGroup
-Used to **temporarily add a group** to **all players**.
-Returns the <int>**number of successful additions of the temporary group to players**.
+Used to **temporarily add a group** to **all players**.<br />
+Returns the <int>**number of successful additions of the temporary group to players**.<br />
 To call the **AddAllUsersGroup** method, you need to pass 3 parameters, 2 of which is optional:
 1. <string>**groupName** - **The name of the group**;
 2. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the group** will be valid **until the wipe**;
@@ -476,8 +477,8 @@ To call the **AddAllUsersGroup** method, you need to pass 3 parameters, 2 of whi
 ```
 
 ### RemoveActiveUsersGroup
-Used to **remove a temporary group** from **all online players**.
-Returns the <int>**number of successful removals of temporary groups from players**.  
+Used to **remove a temporary group** from **all online players**.<br />
+Returns the <int>**number of successful removals of temporary groups from players**.<br />
 To call the **RemoveActiveUsersGroup** method, you need to pass 1 parameter:
 1. <string>**groupName** - **The name of the group**.
 
@@ -486,8 +487,8 @@ To call the **RemoveActiveUsersGroup** method, you need to pass 1 parameter:
 ```
 
 ### RemoveAllUsersGroup
-Used to **remove a temporary group** from **all players**.
-Returns the <int>**number of successful removals of temporary groups from players**.  
+Used to **remove a temporary group** from **all players**.<br />
+Returns the <int>**number of successful removals of temporary groups from players**.<br />
 To call the **RemoveAllUsersGroup** method, you need to pass 1 parameter:
 1. <string>**permName** - **The name of the permission**.
 
@@ -496,9 +497,9 @@ To call the **RemoveAllUsersGroup** method, you need to pass 1 parameter:
 ```
 
 ### UserGetAllGroups
-Used to **retrieve all temporary groups** of a **player**.
-Returns a **Dictionary<string, DateTime[]>** where the **key is the group name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the group.
-If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.
+Used to **retrieve all temporary groups** of a **player**.<br />
+Returns a **Dictionary<string, DateTime[]>** where the **key is the group name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the group.<br />
+If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.<br />
 To call the **UserGetAllGroups** method, you need to pass 1 parameter:
 1. <string>**permName** - **The name of the permission**.
 
@@ -507,8 +508,8 @@ To call the **UserGetAllGroups** method, you need to pass 1 parameter:
 ```
 
 ### ActiveUsersGetAllGroups
-Used to **retrieve all temporary groups** of a **player**.
-Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is the group name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the group.
+Used to **retrieve all temporary groups** of a **player**.<br />
+Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is the group name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the group.<br />
 If **the expiration date** is set to **default**, it means the group is valid **until the wipe**.
 
 ```csharp
@@ -516,8 +517,8 @@ If **the expiration date** is set to **default**, it means the group is valid **
 ```
 
 ### ActiveUsersGetAllGroups
-Used to **retrieve all temporary groups** of **all players** who **have temporary groups**.
-Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is userID** and the **value is another Dictionary<string, DateTime[]>**, where the **key is the group name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the group.
+Used to **retrieve all temporary groups** of **all players** who **have temporary groups**.<br />
+Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is userID** and the **value is another Dictionary<string, DateTime[]>**, where the **key is the group name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the group.<br />
 If **the expiration date** is set to **default**, it means the group is valid **until the wipe**.
 
 ```csharp
@@ -525,8 +526,8 @@ If **the expiration date** is set to **default**, it means the group is valid **
 ```
 
 ### AllUsersGetAllGroups
-Used to **retrieve all temporary groups** of **all players** who **have temporary groups**.
-Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is userID** and the **value is another Dictionary<string, DateTime[]>**, where the **key is the group name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the group.
+Used to **retrieve all temporary groups** of **all players** who **have temporary groups**.<br />
+Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is userID** and the **value is another Dictionary<string, DateTime[]>**, where the **key is the group name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the group.<br />
 If **the expiration date** is set to **default**, it means the group is valid **until the wipe**.
 
 ```csharp
@@ -534,8 +535,8 @@ If **the expiration date** is set to **default**, it means the group is valid **
 ```
 
 ### GrantGroupPermission
-Used to **grant a temporary permission** to a **group**.
-Returns **true** if the **grant was successful**.  
+Used to **grant a temporary permission** to a **group**.<br />
+Returns **true** if the **grant was successful**.<br />
 To call the **GrantGroupPermission** method, you need to pass 5 parameters, 3 of which are optional:
 1. <string>**groupName** - **The name of the group**;
 2. <string>**permName** - **The name of the permission**;
@@ -550,8 +551,8 @@ To call the **GrantGroupPermission** method, you need to pass 5 parameters, 3 of
 (bool)TemporaryPermissions?.Call("GrantGroupPermission", "vip", "realpve.vip", expireDate, assignedDate, true);//Calling the GrantGroupPermission method with the specified DateTime for the end and start of the temporary permission.
 ```
 ### RevokeGroupPermission
-Used to **revoke a temporary permission** from a **group**.
-Returns **true** if the **revoke was successful**.  
+Used to **revoke a temporary permission** from a **group**.<br />
+Returns **true** if the **revoke was successful**.<br />
 To call the **RevokeGroupPermission** method, you need to pass 2 parameters:
 1. <string>**groupName** - **The name of the group**;
 2. <string>**permName** - **The name of the permission**.
@@ -561,8 +562,8 @@ To call the **RevokeGroupPermission** method, you need to pass 2 parameters:
 ```
 
 ### GroupHasPermission
-Used to **check** if a **group has a temporary permission**.
-Returns **true** if the **group has the specified temporary permission**.  
+Used to **check** if a **group has a temporary permission**.<br />
+Returns **true** if the **group has the specified temporary permission**.<br />
 To call the **GroupHasPermission** method, you need to pass 2 parameters:
 1. <string>**groupName** - **The name of the group**;
 2. <string>**permName** - **The name of the permission**.
@@ -572,8 +573,8 @@ To call the **GroupHasPermission** method, you need to pass 2 parameters:
 ```
 
 ### GrantAllGroupsPermission
-Used to **temporarily grant a permission** to **all groups**.
-Returns the <int>**number of successful grants of temporary permissions to groups**.  
+Used to **temporarily grant a permission** to **all groups**.<br />
+Returns the <int>**number of successful grants of temporary permissions to groups**.<br />
 To call the **GrantAllGroupsPermission** method, you need to pass 3 parameters, 2 of which is optional:
 1. <string>**permName** - **The name of the permission**;
 2. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
@@ -587,8 +588,8 @@ To call the **GrantAllGroupsPermission** method, you need to pass 3 parameters, 
 ```
 
 ### RevokeAllGroupsPermission
-Used to **revoke a temporary permission** from **all groups**.
-Returns the <int>**number of successful revokes of temporary permissions to groups**.  
+Used to **revoke a temporary permission** from **all groups**.<br />
+Returns the <int>**number of successful revokes of temporary permissions to groups**.<br />
 To call the **RevokeAllGroupsPermission** method, you need to pass 1 parameter:
 1. <string>**permName** - **The name of the permission**.
 
@@ -597,9 +598,9 @@ To call the **RevokeAllGroupsPermission** method, you need to pass 1 parameter:
 ```
 
 ### GroupGetAllPermissions
-Used to **retrieve all temporary permissions** of a **group**.
-Returns a **Dictionary<string, DateTime[]>** where **the key is the permission name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.
-If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.
+Used to **retrieve all temporary permissions** of a **group**.<br />
+Returns a **Dictionary<string, DateTime[]>** where **the key is the permission name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.<br />
+If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.<br />
 To call the **GroupGetAllPermissions** method, you need to pass 1 parameter:
 1. <string>**groupName** - **The name of the group**.
 
@@ -608,8 +609,8 @@ To call the **GroupGetAllPermissions** method, you need to pass 1 parameter:
 ```
 
 ### AllGroupsGetAllPermissions
-Used to **retrieve all temporary permissions** of **all groups** that **have temporary permissions**.
-Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is the group name** and the **value is another Dictionary<string, DateTime[]>**, where the **key is the permission name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.
+Used to **retrieve all temporary permissions** of **all groups** that **have temporary permissions**.<br />
+Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is the group name** and the **value is another Dictionary<string, DateTime[]>**, where the **key is the permission name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.<br />
 If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.
 
 ```csharp
