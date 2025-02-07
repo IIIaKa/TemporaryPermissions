@@ -40,17 +40,18 @@ Useful plugin for managing **temporary permissions**, **temporary groups** and *
 ```json
 {
   "Chat command": "tperm",
-  "Interval in seconds for expiration check": 1.0,
-  "Interval in seconds for checking the presence of temporary permissions and temporary groups. There are cases where removal cannot be tracked in the usual way. A value of 0 disables the check": 600.0,
-  "Is it worth restoring removed temporary permissions and temporary groups if the timer hasn't expired?": true,
-  "Is it worth removing temporary permissions and temporary groups when unloading the plugin?": true,
+  "Is it worth saving logs to a file?": true,
   "Is it worth using console logging?": true,
-  "Is it worth clearing all temporary permissions upon detecting a wipe?": false,
+  "Interval in seconds for expiration check": 1.0,
+  "Interval in seconds for checking the presence of temporary permissions and temporary groups. A value of 0 disables the check": 600.0,
+  "Is it worth restoring removed temporary permissions and temporary groups if the timer hasn't expired? There are cases where removal cannot be tracked in the usual way": true,
+  "Is it worth revoking temporary permissions and temporary groups when unloading the plugin, without removing them from the data file?": true,
+  "Is it worth revoking temporary permissions and temporary groups that haven't expired yet upon detecting a wipe?": false,
   "Wipe ID": null,
   "Version": {
     "Major": 0,
     "Minor": 1,
-    "Patch": 0
+    "Patch": 3
   }
 }
 ```
