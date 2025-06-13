@@ -44,16 +44,20 @@ Useful plugin for managing **temporary permissions**, **temporary groups** and *
   "Is it worth enabling GameTips for messages?": true,
   "Is it worth saving logs to a file?": true,
   "Is it worth using console logging?": true,
+  "List of language keys for creating language files": [
+    "en"
+  ],
   "Interval in seconds for expiration check": 1.0,
   "Interval in seconds for checking the presence of temporary permissions and temporary groups. A value of 0 disables the check": 600.0,
   "Is it worth restoring removed temporary permissions and temporary groups if the timer hasn't expired? There are cases where removal cannot be tracked in the usual way": true,
   "Is it worth revoking temporary permissions and temporary groups when unloading the plugin, without removing them from the data file?": true,
   "Is it worth revoking temporary permissions and temporary groups that haven't expired yet upon detecting a wipe?": false,
+  "Custom wipe date(detected only during initialization). Only required if you're experiencing issues with the Wipe ID. Leave empty to use the Wipe ID. Example: 2025-06-25 13:00": "",
   "Wipe ID": null,
   "Version": {
     "Major": 0,
     "Minor": 1,
-    "Patch": 4
+    "Patch": 5
   }
 }
 ```  
@@ -63,20 +67,23 @@ Useful plugin for managing **temporary permissions**, **temporary groups** and *
 ### EN  
 ```json
 {
-  "CmdAdmin": "Available admin commands:\n\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *nameOrID* realpve.vip wipe</color> - Grants or extends the specified permission for the specified player until the end of the current wipe\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *nameOrID* realpve.vip *intValue* *boolValue*(optional)</color> - Grants or extends the specified permission for the specified player for the given number of seconds\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *nameOrID* realpve.vip *expirationDate* *assignmentDate*(optional)</color> - Grants or extends the specified permission for the specified player until the given date\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *groupName* realpve.vip wipe</color> - Grants or extends the specified permission for the specified group until the end of the current wipe\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *groupName* realpve.vip *intValue* *boolValue*(optional)</color> - Grants or extends the specified permission for the specified group for the given number of seconds\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *groupName* realpve.vip *expirationDate* *assignmentDate*(optional)</color> - Grants or extends the specified permission for the specified group until the given date\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>revoke user *nameOrID* realpve.vip</color> - Revokes the specified permission from the specified player\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>revoke group *groupName* realpve.vip</color> - Revokes the specified permission from the specified group\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *nameOrID* *groupName* wipe</color> - Adds or extends the specified player's membership in the specified group until the end of the current wipe\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *nameOrID* *groupName* *intValue* *boolValue*(optional)</color> - Adds or extends the specified player's membership in the specified group for the given number of seconds\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *nameOrID* *groupName* *expirationDate* *assignmentDate*(optional)</color> - Adds or extends the specified player's membership in the specified group until the given date\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>remove *nameOrID* *groupName*</color> - Removes the specified player from the specified group\n\n<color=#D1CBCB>Optional values:</color>\n*boolValue* - If false(default) and an existing permission or group membership has not expired, the specified time will be added to the existing time. Otherwise, including when true, the specified time will be counted from the current time\n*assignmentDate* - If the assignment date is not specified and there is no existing permission or group membership, the assignment date will be set to the current time. If the assignment date is specified, it will be applied regardless of existing permissions or group memberships\n\n--------------------------------------------------",
+  "CmdAdmin": "Available admin commands:\n\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *nameOrId* realpve.vip wipe</color> - Grants or extends the specified permission for the specified player until the end of the current wipe\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *nameOrId* realpve.vip *intValue* *boolValue*(optional)</color> - Grants or extends the specified permission for the specified player for the given number of seconds\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *nameOrId* realpve.vip *expirationDate* *assignmentDate*(optional)</color> - Grants or extends the specified permission for the specified player until the given date\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *groupName* realpve.vip wipe</color> - Grants or extends the specified permission for the specified group until the end of the current wipe\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *groupName* realpve.vip *intValue* *boolValue*(optional)</color> - Grants or extends the specified permission for the specified group for the given number of seconds\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *groupName* realpve.vip *expirationDate* *assignmentDate*(optional)</color> - Grants or extends the specified permission for the specified group until the given date\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>revoke user *nameOrId* realpve.vip</color> - Revokes the specified permission from the specified player\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>revoke group *groupName* realpve.vip</color> - Revokes the specified permission from the specified group\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *nameOrId* *groupName* wipe</color> - Adds or extends the specified player's membership in the specified group until the end of the current wipe\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *nameOrId* *groupName* *intValue* *boolValue*(optional)</color> - Adds or extends the specified player's membership in the specified group for the given number of seconds\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *nameOrId* *groupName* *expirationDate* *assignmentDate*(optional)</color> - Adds or extends the specified player's membership in the specified group until the given date\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>remove *nameOrId* *groupName*</color> - Removes the specified player from the specified group\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>wipe *wipeDate*</color> - Set a custom wipe date. Used in case of issues with the Wipe ID. Format: yyyy-MM-dd HH:mm\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>wipe reset</color> - Reset the custom wipe date\n\n<color=#D1CBCB>Optional values:</color>\n*boolValue* - If false(default) and an existing permission or group membership has not expired, the specified time will be added to the existing time. Otherwise, including when true, the specified time will be counted from the current time\n*assignmentDate* - If the assignment date is not specified and there is no existing permission or group membership, the assignment date will be set to the current time. If the assignment date is specified, it will be applied regardless of existing permissions or group memberships\n\n--------------------------------------------------",
   "CmdPermissionNotFound": "Permission '{0}' not found!",
   "CmdPlayerNotFound": "Player '{0}' not found! You must provide the player's name or ID.",
   "CmdMultiplePlayers": "Multiple players found for '{0}': {1}",
   "CmdGroupNotFound": "Group '{0}' not found!",
-  "CmdGrantWrongFormat": "Incorrect command format! Example: /tperm grant user/group *NameOrId* realpve.vip *secondsOrDateTime*",
-  "CmdRevokeWrongFormat": "Incorrect command format! Example: /tperm revoke user/group *NameOrId* realpve.vip",
-  "CmdUserGroupWrongFormat": "Incorrect command format! Example: /tperm group add/remove *NameOrId* *groupName*",
+  "CmdGrantWrongFormat": "Incorrect command format! Example: /tperm grant user/group *nameOrId* realpve.vip *secondsOrDateTime*",
+  "CmdRevokeWrongFormat": "Incorrect command format! Example: /tperm revoke user/group *nameOrId* realpve.vip",
+  "CmdUserGroupWrongFormat": "Incorrect command format! Example: /tperm group add/remove *nameOrId* *groupName*",
   "CmdUserGranted": "Permission '{0}' granted to player '{1}'.",
   "CmdGroupGranted": "Permission '{0}' granted to group '{1}'.",
   "CmdUserGroupAdded": "Player '{0}' has been added to group '{1}'.",
   "CmdUserRevoked": "Permission '{0}' has been revoked for player '{1}'.",
   "CmdGroupRevoked": "Permission '{0}' has been revoked for group '{1}'.",
   "CmdUserGroupRemoved": "Player '{0}' has been removed from group '{1}'.",
+  "CmdWipeNew": "New wipe date successfully set to '{0}'. The wipe will take effect only after the plugin is loaded following this date.",
+  "CmdWipeReset": "The custom wipe date has been reset. The wipe is now determined by the Wipe ID.",
+  "CmdWipeFailed": "The specified date '{0}' has an invalid format(yyyy-MM-dd HH:mm) or has already passed. Example: '{1}'.",
   "CmdCheckNoActive": "You have no active temporary permissions or temporary groups!",
   "CmdCheckTargetNoActive": "Player '{0}' has no active temporary permissions or temporary groups!",
   "CmdCheckPermissions": "<color=#D1AB9A>You have {0} temporary permissions(time in UTC):</color>\n{1}",
@@ -84,14 +91,15 @@ Useful plugin for managing **temporary permissions**, **temporary groups** and *
   "CmdCheckTargetPermissions": "<color=#D1AB9A>Player '{2}' has {0} temporary permissions(time in UTC):</color>\n{1}",
   "CmdCheckTargetGroups": "<color=#D1AB9A>Player '{2}' has {0} temporary groups(time in UTC):</color>\n{1}",
   "CmdCheckFormatPermissions": "'{0}' - {1}({2})",
-  "CmdCheckFormatGroups": "'{0}' - {1}({2})"
+  "CmdCheckFormatGroups": "'{0}' - {1}({2})",
+  "CmdUntilWipe": "Until Wipe"
 }
 ```  
 
 ### RU  
 ```json
 {
-  "CmdAdmin": "Доступные админ команды:\n\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *имяИлиАйди* realpve.vip wipe</color> - Выдать или продлить указанный пермишен указанному игроку до конца текущего вайпа\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *имяИлиАйди* realpve.vip *числовоеЗначение* *булевоеЗначение*(опционально)</color> - Выдать или продлить указанный пермишен указанному игроку на указанное количество секунд\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *имяИлиАйди* realpve.vip *датаИстечения* *датаНазначения*(опционально)</color> - Выдать или продлить указанный пермишен указанному игроку до указанной даты\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *имяГруппы* realpve.vip wipe</color> - Выдать или продлить указанный пермишен указанной группе до конца текущего вайпа\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *имяГруппы* realpve.vip *числовоеЗначение* *булевоеЗначение*(опционально)</color> - Выдать или продлить указанный пермишен указанной группе на указанное количество секунд\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *имяГруппы* realpve.vip *датаИстечения* *датаНазначения*(опционально)</color> - Выдать или продлить указанный пермишен указанной группе до указанной даты\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>revoke user *имяИлиАйди* realpve.vip</color> - Снять указанный пермишен у указанного игрока\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>revoke group *имяГруппы* realpve.vip</color> - Снять указанный пермишен у указанной группы\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *имяИлиАйди* *имяГруппы* wipe</color> - Добавить или продлить пребывание в указанной группе указанному игроку до конца текущего вайпа\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *имяИлиАйди* *имяГруппы* *числовоеЗначение* *булевоеЗначение*(опционально)</color> - Добавить или продлить пребывание в указанной группе указанному игроку на указанное количество секунд\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *имяИлиАйди* *имяГруппы* *датаИстечения* *датаНазначения*(опционально)</color> - Добавить или продлить пребывание в указанной группе указанному игроку до указанной даты\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>remove *имяИлиАйди* *имяГруппы*</color> - Отменить пребывание в указанной группе указанному игроку\n\n<color=#D1CBCB>Опциональные значения:</color>\n*булевоеЗначение* - Если false(по умолчанию) и существующий пермишен или группа не истекли, указанное время будет добавлено к существующему времени. В противном случае, в т.ч. при true, указанное время будет отсчитываться от текущего времени\n*датаНазначения* - Если дата назначения не указана и нет существующего пермишена или группы, дата назначения будет равна текущей. Если дата назначения указана, то вне зависимости от существования пермишенов или групп, присвоится указанная дата\n\n--------------------------------------------------",
+  "CmdAdmin": "Доступные админ команды:\n\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *имяИлиАйди* realpve.vip wipe</color> - Выдать или продлить указанный пермишен указанному игроку до конца текущего вайпа\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *имяИлиАйди* realpve.vip *числовоеЗначение* *булевоеЗначение*(опционально)</color> - Выдать или продлить указанный пермишен указанному игроку на указанное количество секунд\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *имяИлиАйди* realpve.vip *датаИстечения* *датаНазначения*(опционально)</color> - Выдать или продлить указанный пермишен указанному игроку до указанной даты\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *имяГруппы* realpve.vip wipe</color> - Выдать или продлить указанный пермишен указанной группе до конца текущего вайпа\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *имяГруппы* realpve.vip *числовоеЗначение* *булевоеЗначение*(опционально)</color> - Выдать или продлить указанный пермишен указанной группе на указанное количество секунд\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *имяГруппы* realpve.vip *датаИстечения* *датаНазначения*(опционально)</color> - Выдать или продлить указанный пермишен указанной группе до указанной даты\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>revoke user *имяИлиАйди* realpve.vip</color> - Снять указанный пермишен у указанного игрока\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>revoke group *имяГруппы* realpve.vip</color> - Снять указанный пермишен у указанной группы\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *имяИлиАйди* *имяГруппы* wipe</color> - Добавить или продлить пребывание в указанной группе указанному игроку до конца текущего вайпа\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *имяИлиАйди* *имяГруппы* *числовоеЗначение* *булевоеЗначение*(опционально)</color> - Добавить или продлить пребывание в указанной группе указанному игроку на указанное количество секунд\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *имяИлиАйди* *имяГруппы* *датаИстечения* *датаНазначения*(опционально)</color> - Добавить или продлить пребывание в указанной группе указанному игроку до указанной даты\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>remove *имяИлиАйди* *имяГруппы*</color> - Отменить пребывание в указанной группе указанному игроку\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>wipe *датаВайпа*</color> - Установка кастомной даты вайпа. Используется при проблемах с Wipe ID. Формат: yyyy-MM-dd HH:mm\n<color=#D1CBCB>/tperm</color> <color=#D1AB9A>wipe reset</color> - Сброс кастомной даты вайпа\n\n<color=#D1CBCB>Опциональные значения:</color>\n*булевоеЗначение* - Если false(по умолчанию) и существующий пермишен или группа не истекли, указанное время будет добавлено к существующему времени. В противном случае, в т.ч. при true, указанное время будет отсчитываться от текущего времени\n*датаНазначения* - Если дата назначения не указана и нет существующего пермишена или группы, дата назначения будет равна текущей. Если дата назначения указана, то вне зависимости от существования пермишенов или групп, присвоится указанная дата\n\n--------------------------------------------------",
   "CmdPermissionNotFound": "Пермишен '{0}' не найден!",
   "CmdPlayerNotFound": "Игрок '{0}' не найден! Вы должны указать имя или ID игрока.",
   "CmdMultiplePlayers": "По значению '{0}' найдено несколько игроков: {1}",
@@ -105,6 +113,10 @@ Useful plugin for managing **temporary permissions**, **temporary groups** and *
   "CmdUserRevoked": "Пермишен '{0}' был удален для игрока '{1}'.",
   "CmdGroupRevoked": "Пермишен '{0}' был удален для группы '{1}'.",
   "CmdUserGroupRemoved": "Игрок '{0}' был удален из группы '{1}'.",
+  "CmdWipeNew": "Новая дата вайпа успешно установлена на '{0}'. Вайп вступит в силу только при загрузке плагина после этой даты.",
+  "CmdWipeReset": "Кастомная дата вайпа была сброшена. Вайп снова определяется по Wipe ID.",
+  "CmdWipeFailed": "Указанная дата '{0}' имеет неверный формат(yyyy-MM-dd HH:mm) или уже прошла. Пример: '{1}'.",
+  "CmdCheckFormatGroups": "'{0}' - {1}({2})",
   "CmdCheckNoActive": "У вас нет активных временных пермишенов или временных групп!",
   "CmdCheckTargetNoActive": "У игрока '{0}' нет активных временных пермишенов или временных групп!",
   "CmdCheckPermissions": "<color=#D1AB9A>У вас есть {0} временных пермишенов(время по UTC):</color>\n{1}",
@@ -112,7 +124,7 @@ Useful plugin for managing **temporary permissions**, **temporary groups** and *
   "CmdCheckTargetPermissions": "<color=#D1AB9A>У игрока '{2}' есть {0} временных пермишенов(время по UTC):</color>\n{1}",
   "CmdCheckTargetGroups": "<color=#D1AB9A>У игрока '{2}' есть {0} временных групп(время по UTC):</color>\n{1}",
   "CmdCheckFormatPermissions": "'{0}' - {1}({2})",
-  "CmdCheckFormatGroups": "'{0}' - {1}({2})"
+  "CmdUntilWipe": "До вайпа"
 }
 ```  
 
@@ -145,11 +157,15 @@ Admin commands(**/tperm**). Permission "**temporarypermissions.admin**" required
   - **<displayName|userID> <groupName> "2024-08-19 17:57" "2024-08-19 16:57"** - Temporary **addition** of a player to a group by specifying **the player's name** or **Id**, **the group name**, **the expiration date** and **the assigned date**(optional).  
   If **not specified**, the assigned date will default to **the current date**, otherwise, it will be set to the provided date.
 - **remove <displayName|userID> <groupName>** - **Removal** of a **player from a temporary group** by specifying **the player's name** or **Id** and **the group name**.
+- **wipe** - Setting a custom wipe date. Used if you're experiencing issues with using the Wipe ID.
+  - **<wipeDate>** - Set a custom wipe date(yyyy-MM-dd HH:mm). Used in case of issues with the Wipe ID;
+  - **reset** - Reset the custom wipe date.
 
 **Example:**
 - **/tperm grant user iiiaka realpve.vip wipe**
 - **/tperm grant user iiiaka realpve.vip 3600 true**
 - **/tperm grant user iiiaka realpve.vip "2024-08-19 17:57" "2024-08-19 16:57"**
+- **/tperm wipe "2025-06-25 13:00"**
 
 **Note:** To access the commands, the player must be an admin(**console** or **owner**) or have the **`temporarypermissions.admin`** permission.  
 

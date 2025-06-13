@@ -33,6 +33,7 @@
 
 using System;
 using System.Linq;
+using System.Globalization;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Facepunch;
@@ -42,13 +43,15 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("Temporary Permissions", "IIIaKa", "0.1.4")]
+    [Info("Temporary Permissions", "IIIaKa", "0.1.5")]
     [Description("Useful plugin for managing temporary permissions, temporary groups and temporary permissions for groups. This is done through chat commands, built-in Oxide commands and API methods.")]
     class TemporaryPermissions : RustPlugin
     {
         #region ~Variables~
+        private static TemporaryPermissions Instance { get; set; }
         private bool _isReady = false;
-        private const string PERMISSION_ADMIN = "temporarypermissions.admin", TimeFormat = "yyyy-MM-dd HH:mm:ss", CommandAdd = "add", CommandRemove = "remove", CommandUser = "user", CommandGroup = "group", Str_Wipe = "wipe", Hooks_OnLoaded = "OnTemporaryPermissionsLoaded",
+        private const string PERMISSION_ADMIN = "temporarypermissions.admin", TimeFormat = "yyyy-MM-dd HH:mm:ss", CommandAdd = "add", CommandRemove = "remove", CommandUser = "user", CommandGroup = "group",
+            Str_Showtoast = "gametip.showtoast", Str_Wipe = "wipe", Log_UserPerms = "user_permissions", Log_UserGroups = "user_groups", Log_GroupPerms = "group_permissions", Hooks_OnLoaded = "OnTemporaryPermissionsLoaded",
             Hooks_UserPermissionGranted = "OnTemporaryPermissionGranted", Hooks_UserPermissionUpdated = "OnTemporaryPermissionUpdated", Hooks_UserPermissionRevoked = "OnTemporaryPermissionRevoked",
             Hooks_UserGroupAdded = "OnTemporaryGroupAdded", Hooks_UserGroupUpdated = "OnTemporaryGroupUpdated", Hooks_UserGroupRemoved = "OnTemporaryGroupRemoved",
             Hooks_GroupPermissionGranted = "OnGroupTemporaryPermissionGranted", Hooks_GroupPermissionUpdated = "OnGroupTemporaryPermissionUpdated", Hooks_GroupPermissionRevoked = "OnGroupTemporaryPermissionRevoked";
@@ -56,6 +59,7 @@ namespace Oxide.Plugins
             CommandsRevoke = new string[] { "oxide.revoke", "o.revoke", "perm.revoke" },
             CommandsUserGroup = new string[] { "oxide.usergroup", "o.usergroup", "perm.usergroup" };
         private Timer _expirationTimer, _presenceTimer;
+        private HashSet<string> _existingPerms, _existingGroups;
         #endregion
 
         #region ~Configuration~
@@ -78,6 +82,9 @@ namespace Oxide.Plugins
             [JsonProperty(PropertyName = "Is it worth using console logging?")]
             public bool ConsoleLogs = true;
             
+            [JsonProperty(PropertyName = "List of language keys for creating language files")]
+            public List<string> LanguageKeys;
+            
             [JsonProperty(PropertyName = "Interval in seconds for expiration check")]
             public float ExpirationInterval = 1f;
             
@@ -92,6 +99,9 @@ namespace Oxide.Plugins
             
             [JsonProperty(PropertyName = "Is it worth revoking temporary permissions and temporary groups that haven't expired yet upon detecting a wipe?")]
             public bool RevokeAllOnWipe = false;
+            
+            [JsonProperty(PropertyName = "Custom wipe date(detected only during initialization). Only required if you're experiencing issues with the Wipe ID. Leave empty to use the Wipe ID. Example: 2025-06-25 13:00")]
+            public string CustomWipe = string.Empty;
             
             [JsonProperty(PropertyName = "Wipe ID")]
             public string WipeID = string.Empty;
@@ -122,6 +132,22 @@ namespace Oxide.Plugins
                 _config.AdminCommand = "tperm";
             if (_config.Command.Equals(_config.AdminCommand, StringComparison.OrdinalIgnoreCase))
                 _config.Command += "_1";
+            
+            if (_config.LanguageKeys == null)
+                _config.LanguageKeys = new List<string>();
+            if (_config.LanguageKeys.Any())
+            {
+                for (int i = _config.LanguageKeys.Count - 1; i >= 0; i--)
+                {
+                    string langKey = ToLangKey(_config.LanguageKeys[i]);
+                    if (langKey.Equals("en", StringComparison.OrdinalIgnoreCase) || langKey.Equals("ru", StringComparison.OrdinalIgnoreCase))
+                        _config.LanguageKeys.RemoveAt(i);
+                    else
+                        _config.LanguageKeys[i] = langKey;
+                }
+            }
+            _config.LanguageKeys.Add("en");
+            
             _config.ExpirationInterval = Mathf.Max(_config.ExpirationInterval, 1f);
             _config.PresenceInterval = Mathf.Max(_config.PresenceInterval, 0f);
             
@@ -138,7 +164,7 @@ namespace Oxide.Plugins
         private class StoredData
         {
             [JsonProperty(PropertyName = "Players list")]
-            public Dictionary<string, PlayerData> PlayersList = new Dictionary<string, PlayerData>();
+            public Dictionary<string, PlayerData> PlayersList = new Dictionary<string, PlayerData>(StringComparer.OrdinalIgnoreCase);
             
             [JsonProperty(PropertyName = "Groups list")]
             public Dictionary<string, GroupData> GroupsList = new Dictionary<string, GroupData>(StringComparer.OrdinalIgnoreCase);
@@ -150,23 +176,25 @@ namespace Oxide.Plugins
         #region ~Language~
         protected override void LoadDefaultMessages()
         {
-            lang.RegisterMessages(new Dictionary<string, string>
+            var enLang = new Dictionary<string, string>
             {
                 ["CmdAdmin"] = string.Join("\n", new string[]
                 {
                     "Available admin commands:\n",
-                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *nameOrID* realpve.vip wipe</color> - Grants or extends the specified permission for the specified player until the end of the current wipe",
-                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *nameOrID* realpve.vip *intValue* *boolValue*(optional)</color> - Grants or extends the specified permission for the specified player for the given number of seconds",
-                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *nameOrID* realpve.vip *expirationDate* *assignmentDate*(optional)</color> - Grants or extends the specified permission for the specified player until the given date",
+                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *nameOrId* realpve.vip wipe</color> - Grants or extends the specified permission for the specified player until the end of the current wipe",
+                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *nameOrId* realpve.vip *intValue* *boolValue*(optional)</color> - Grants or extends the specified permission for the specified player for the given number of seconds",
+                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant user *nameOrId* realpve.vip *expirationDate* *assignmentDate*(optional)</color> - Grants or extends the specified permission for the specified player until the given date",
                     "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *groupName* realpve.vip wipe</color> - Grants or extends the specified permission for the specified group until the end of the current wipe",
                     "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *groupName* realpve.vip *intValue* *boolValue*(optional)</color> - Grants or extends the specified permission for the specified group for the given number of seconds",
                     "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>grant group *groupName* realpve.vip *expirationDate* *assignmentDate*(optional)</color> - Grants or extends the specified permission for the specified group until the given date",
-                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>revoke user *nameOrID* realpve.vip</color> - Revokes the specified permission from the specified player",
+                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>revoke user *nameOrId* realpve.vip</color> - Revokes the specified permission from the specified player",
                     "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>revoke group *groupName* realpve.vip</color> - Revokes the specified permission from the specified group",
-                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *nameOrID* *groupName* wipe</color> - Adds or extends the specified player's membership in the specified group until the end of the current wipe",
-                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *nameOrID* *groupName* *intValue* *boolValue*(optional)</color> - Adds or extends the specified player's membership in the specified group for the given number of seconds",
-                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *nameOrID* *groupName* *expirationDate* *assignmentDate*(optional)</color> - Adds or extends the specified player's membership in the specified group until the given date",
-                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>remove *nameOrID* *groupName*</color> - Removes the specified player from the specified group",
+                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *nameOrId* *groupName* wipe</color> - Adds or extends the specified player's membership in the specified group until the end of the current wipe",
+                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *nameOrId* *groupName* *intValue* *boolValue*(optional)</color> - Adds or extends the specified player's membership in the specified group for the given number of seconds",
+                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *nameOrId* *groupName* *expirationDate* *assignmentDate*(optional)</color> - Adds or extends the specified player's membership in the specified group until the given date",
+                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>remove *nameOrId* *groupName*</color> - Removes the specified player from the specified group",
+                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>wipe *wipeDate*</color> - Set a custom wipe date. Used in case of issues with the Wipe ID. Format: yyyy-MM-dd HH:mm",
+                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>wipe reset</color> - Reset the custom wipe date",
                     "\n<color=#D1CBCB>Optional values:</color>",
                     "*boolValue* - If false(default) and an existing permission or group membership has not expired, the specified time will be added to the existing time. Otherwise, including when true, the specified time will be counted from the current time",
                     "*assignmentDate* - If the assignment date is not specified and there is no existing permission or group membership, the assignment date will be set to the current time. If the assignment date is specified, it will be applied regardless of existing permissions or group memberships",
@@ -176,15 +204,18 @@ namespace Oxide.Plugins
                 ["CmdPlayerNotFound"] = "Player '{0}' not found! You must provide the player's name or ID.",
                 ["CmdMultiplePlayers"] = "Multiple players found for '{0}': {1}",
                 ["CmdGroupNotFound"] = "Group '{0}' not found!",
-                ["CmdGrantWrongFormat"] = "Incorrect command format! Example: /tperm grant user/group *NameOrId* realpve.vip *secondsOrDateTime*",
-                ["CmdRevokeWrongFormat"] = "Incorrect command format! Example: /tperm revoke user/group *NameOrId* realpve.vip",
-                ["CmdUserGroupWrongFormat"] = "Incorrect command format! Example: /tperm group add/remove *NameOrId* *groupName*",
+                ["CmdGrantWrongFormat"] = "Incorrect command format! Example: /tperm grant user/group *nameOrId* realpve.vip *secondsOrDateTime*",
+                ["CmdRevokeWrongFormat"] = "Incorrect command format! Example: /tperm revoke user/group *nameOrId* realpve.vip",
+                ["CmdUserGroupWrongFormat"] = "Incorrect command format! Example: /tperm group add/remove *nameOrId* *groupName*",
                 ["CmdUserGranted"] = "Permission '{0}' granted to player '{1}'.",
                 ["CmdGroupGranted"] = "Permission '{0}' granted to group '{1}'.",
                 ["CmdUserGroupAdded"] = "Player '{0}' has been added to group '{1}'.",
                 ["CmdUserRevoked"] = "Permission '{0}' has been revoked for player '{1}'.",
                 ["CmdGroupRevoked"] = "Permission '{0}' has been revoked for group '{1}'.",
                 ["CmdUserGroupRemoved"] = "Player '{0}' has been removed from group '{1}'.",
+                ["CmdWipeNew"] = "New wipe date successfully set to '{0}'. The wipe will take effect only after the plugin is loaded following this date.",
+                ["CmdWipeReset"] = "The custom wipe date has been reset. The wipe is now determined by the Wipe ID.",
+                ["CmdWipeFailed"] = "The specified date '{0}' has an invalid format(yyyy-MM-dd HH:mm) or has already passed. Example: '{1}'.",
                 ["CmdCheckNoActive"] = "You have no active temporary permissions or temporary groups!",
                 ["CmdCheckTargetNoActive"] = "Player '{0}' has no active temporary permissions or temporary groups!",
                 ["CmdCheckPermissions"] = string.Join("\n", new string[]
@@ -208,9 +239,10 @@ namespace Oxide.Plugins
                     "{1}"
                 }),
                 ["CmdCheckFormatPermissions"] = "'{0}' - {1}({2})",
-                ["CmdCheckFormatGroups"] = "'{0}' - {1}({2})"
-            }, this);
-            lang.RegisterMessages(new Dictionary<string, string>
+                ["CmdCheckFormatGroups"] = "'{0}' - {1}({2})",
+                ["CmdUntilWipe"] = "Until Wipe"
+            };
+            var ruLang = new Dictionary<string, string>
             {
                 ["CmdAdmin"] = string.Join("\n", new string[]
                 {
@@ -227,6 +259,8 @@ namespace Oxide.Plugins
                     "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *имяИлиАйди* *имяГруппы* *числовоеЗначение* *булевоеЗначение*(опционально)</color> - Добавить или продлить пребывание в указанной группе указанному игроку на указанное количество секунд",
                     "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>add *имяИлиАйди* *имяГруппы* *датаИстечения* *датаНазначения*(опционально)</color> - Добавить или продлить пребывание в указанной группе указанному игроку до указанной даты",
                     "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>remove *имяИлиАйди* *имяГруппы*</color> - Отменить пребывание в указанной группе указанному игроку",
+                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>wipe *датаВайпа*</color> - Установка кастомной даты вайпа. Используется при проблемах с Wipe ID. Формат: yyyy-MM-dd HH:mm",
+                    "<color=#D1CBCB>/tperm</color> <color=#D1AB9A>wipe reset</color> - Сброс кастомной даты вайпа",
                     "\n<color=#D1CBCB>Опциональные значения:</color>",
                     "*булевоеЗначение* - Если false(по умолчанию) и существующий пермишен или группа не истекли, указанное время будет добавлено к существующему времени. В противном случае, в т.ч. при true, указанное время будет отсчитываться от текущего времени",
                     "*датаНазначения* - Если дата назначения не указана и нет существующего пермишена или группы, дата назначения будет равна текущей. Если дата назначения указана, то вне зависимости от существования пермишенов или групп, присвоится указанная дата",
@@ -245,6 +279,10 @@ namespace Oxide.Plugins
                 ["CmdUserRevoked"] = "Пермишен '{0}' был удален для игрока '{1}'.",
                 ["CmdGroupRevoked"] = "Пермишен '{0}' был удален для группы '{1}'.",
                 ["CmdUserGroupRemoved"] = "Игрок '{0}' был удален из группы '{1}'.",
+                ["CmdWipeNew"] = "Новая дата вайпа успешно установлена на '{0}'. Вайп вступит в силу только при загрузке плагина после этой даты.",
+                ["CmdWipeReset"] = "Кастомная дата вайпа была сброшена. Вайп снова определяется по Wipe ID.",
+                ["CmdWipeFailed"] = "Указанная дата '{0}' имеет неверный формат(yyyy-MM-dd HH:mm) или уже прошла. Пример: '{1}'.",
+                ["CmdCheckFormatGroups"] = "'{0}' - {1}({2})",
                 ["CmdCheckNoActive"] = "У вас нет активных временных пермишенов или временных групп!",
                 ["CmdCheckTargetNoActive"] = "У игрока '{0}' нет активных временных пермишенов или временных групп!",
                 ["CmdCheckPermissions"] = string.Join("\n", new string[]
@@ -268,8 +306,13 @@ namespace Oxide.Plugins
                     "{1}"
                 }),
                 ["CmdCheckFormatPermissions"] = "'{0}' - {1}({2})",
-                ["CmdCheckFormatGroups"] = "'{0}' - {1}({2})"
-            }, this, "ru");
+                ["CmdCheckFormatGroups"] = "'{0}' - {1}({2})",
+                ["CmdUntilWipe"] = "До вайпа"
+            };
+            
+            for (int i = 0; i < _config.LanguageKeys.Count; i++)
+                lang.RegisterMessages(enLang, this, _config.LanguageKeys[i]);
+            lang.RegisterMessages(ruLang, this, "ru");
         }
         #endregion
         
@@ -278,57 +321,117 @@ namespace Oxide.Plugins
         {
             if (_storedData == null)
                 _storedData = new StoredData();
-            if (_storedData.PlayersList == null)
-                _storedData.PlayersList = new Dictionary<string, PlayerData>();
-            if (_storedData.GroupsList == null)
-                _storedData.GroupsList = new Dictionary<string, GroupData>();
+            _existingPerms = new HashSet<string>(permission.GetPermissions(), StringComparer.OrdinalIgnoreCase);
+            _existingGroups = new HashSet<string>(permission.GetGroups(), StringComparer.OrdinalIgnoreCase);
             
-            foreach (var kvp in _storedData.PlayersList)
-                kvp.Value.UpdateUserID(kvp.Key);
-            foreach (var kvp in _storedData.GroupsList)
-                kvp.Value.UpdateGroupName(kvp.Key);
+            string permName, groupName;
+            TemporaryPermission tempPermission, tempGroup;
             
-            if (string.IsNullOrWhiteSpace(_config.WipeID) || _config.WipeID != SaveRestore.WipeId)
+            var players = _storedData.PlayersList != null ? _storedData.PlayersList.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) : new Dictionary<string, PlayerData>();
+            _storedData.PlayersList = new Dictionary<string, PlayerData>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kvp in players)
+            {
+                if (!kvp.Key.IsSteamId()) continue;
+                var playerData = kvp.Value;
+                playerData.UpdateUserID(kvp.Key);
+                for (int i = 0; i < playerData.PermissionsList.Count; i++)
+                {
+                    tempPermission = playerData.PermissionsList[i];
+                    if (PermissionExists_Helper(tempPermission.Name, out permName))
+                        tempPermission.UpdateName(permName);
+                    if (string.IsNullOrWhiteSpace(tempPermission.Name))
+                        tempPermission.MarkAsRemoved(Log_UserPerms, $"The permission of player '{playerData.DisplayName}' ({playerData.UserID}), assigned by '{tempPermission.AssignedDate}' and valid until '{(tempPermission.UntilWipe ? "wipe" : tempPermission.ExpireDate)}', has been marked for revocation because the permission name is empty.");
+                }
+                for (int i = 0; i < playerData.GroupsList.Count; i++)
+                {
+                    tempGroup = playerData.GroupsList[i];
+                    if (GroupExists_Helper(tempGroup.Name, out groupName))
+                        tempGroup.UpdateName(groupName);
+                    if (string.IsNullOrWhiteSpace(tempGroup.Name))
+                        tempGroup.MarkAsRemoved(Log_UserGroups, $"The group of player '{playerData.DisplayName}' ({playerData.UserID}), assigned by '{tempGroup.AssignedDate}' and valid until '{(tempGroup.UntilWipe ? "wipe" : tempGroup.ExpireDate)}', has been marked for revocation because the group name is empty.");
+                }
+                _storedData.PlayersList[playerData.UserID] = playerData;
+            }
+            
+            var groups = _storedData.GroupsList != null ? _storedData.GroupsList.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) : new Dictionary<string, GroupData>();
+            _storedData.GroupsList = new Dictionary<string, GroupData>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kvp in groups)
+            {
+                if (!GroupExists_Helper(kvp.Key, out groupName) || string.IsNullOrWhiteSpace(groupName)) continue;
+                var groupData = kvp.Value;
+                groupData.UpdateGroupName(groupName);
+                for (int i = 0; i < groupData.PermissionsList.Count; i++)
+                {
+                    tempPermission = groupData.PermissionsList[i];
+                    if (PermissionExists_Helper(tempPermission.Name, out permName))
+                        tempPermission.UpdateName(permName);
+                    if (string.IsNullOrWhiteSpace(tempPermission.Name))
+                        tempPermission.MarkAsRemoved(Log_GroupPerms, $"The permission of group '{groupData.GroupName}', assigned by '{tempPermission.AssignedDate}' and valid until '{(tempPermission.UntilWipe ? "wipe" : tempPermission.ExpireDate)}', has been marked for revocation because the permission name is empty.");
+                }
+                _storedData.GroupsList[groupData.GroupName] = groupData;
+            }
+
+            bool isWipe;
+            if (!string.IsNullOrWhiteSpace(_config.CustomWipe))
+            {
+                isWipe = DateTime.TryParseExact(_config.CustomWipe, TimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var wipeDate) && wipeDate <= DateTime.UtcNow;
+                if (isWipe)
+                    _config.CustomWipe = "WIPED";
+            }
+            else
+                isWipe = string.IsNullOrWhiteSpace(_config.WipeID) || _config.WipeID != SaveRestore.WipeId;
+            _config.WipeID = SaveRestore.WipeId;
+            SaveConfig();
+            if (isWipe)
             {
                 int counter = 0;
-                _config.WipeID = SaveRestore.WipeId;
-                SaveConfig();
                 if (_config.RevokeAllOnWipe)
                 {
                     foreach (var playerData in _storedData.PlayersList.Values)
                     {
                         counter += playerData.PermissionsList.Count;
-                        foreach (var tempPermission in playerData.PermissionsList)
-                            tempPermission.AlreadyRemoved = true;
+                        for (int i = 0; i < playerData.PermissionsList.Count; i++)
+                        {
+                            tempPermission = playerData.PermissionsList[i];
+                            tempPermission.MarkAsRemoved(Log_UserPerms, $"The permission '{tempPermission.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation due to a wipe that removes all temporary permissions.");
+                        }
                         counter += playerData.GroupsList.Count;
-                        foreach (var tempGroup in playerData.GroupsList)
-                            tempGroup.AlreadyRemoved = true;
+                        for (int i = 0; i < playerData.GroupsList.Count; i++)
+                        {
+                            tempGroup = playerData.GroupsList[i];
+                            tempGroup.MarkAsRemoved(Log_UserGroups, $"The group '{tempGroup.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation due to a wipe that removes all temporary groups.");
+                        }
                     }
                     
                     foreach (var groupData in _storedData.GroupsList.Values)
                     {
                         counter += groupData.PermissionsList.Count;
-                        foreach (var tempPermission in groupData.PermissionsList)
-                            tempPermission.AlreadyRemoved = true;
+                        for (int i = 0; i < groupData.PermissionsList.Count; i++)
+                        {
+                            tempPermission = groupData.PermissionsList[i];
+                            tempPermission.MarkAsRemoved(Log_GroupPerms, $"The permission '{tempPermission.Name}' of group '{groupData.GroupName}' has been marked for revocation due to a wipe that removes all temporary permissions.");
+                        }
                     }
                 }
                 else
                 {
                     foreach (var playerData in _storedData.PlayersList.Values)
                     {
-                        foreach (var tempPermission in playerData.PermissionsList)
+                        for (int i = 0; i < playerData.PermissionsList.Count; i++)
                         {
+                            tempPermission = playerData.PermissionsList[i];
                             if (tempPermission.UntilWipe)
                             {
-                                tempPermission.AlreadyRemoved = true;
+                                tempPermission.MarkAsRemoved(Log_UserPerms, $"The permission '{tempPermission.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation due to a wipe.");
                                 counter++;
                             }
                         }
-                        foreach (var tempGroup in playerData.GroupsList)
+                        for (int i = 0; i < playerData.GroupsList.Count; i++)
                         {
+                            tempGroup = playerData.GroupsList[i];
                             if (tempGroup.UntilWipe)
                             {
-                                tempGroup.AlreadyRemoved = true;
+                                tempGroup.MarkAsRemoved(Log_UserGroups, $"The group '{tempGroup.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation due to a wipe.");
                                 counter++;
                             }
                         }
@@ -336,11 +439,12 @@ namespace Oxide.Plugins
                     
                     foreach (var groupData in _storedData.GroupsList.Values)
                     {
-                        foreach (var tempPermission in groupData.PermissionsList)
+                        for (int i = 0; i < groupData.PermissionsList.Count; i++)
                         {
+                            tempPermission = groupData.PermissionsList[i];
                             if (tempPermission.UntilWipe)
                             {
-                                tempPermission.AlreadyRemoved = true;
+                                tempPermission.MarkAsRemoved(Log_GroupPerms, $"The permission '{tempPermission.Name}' of group '{groupData.GroupName}' has been marked for revocation due to a wipe.");
                                 counter++;
                             }
                         }
@@ -352,19 +456,19 @@ namespace Oxide.Plugins
             yield return new WaitForSeconds(1);
             foreach (var playerData in _storedData.PlayersList.Values)
             {
-                foreach (var tempPerm in playerData.PermissionsList)
-                    permission.GrantUserPermission(playerData.UserID, tempPerm.Name, null);
-                foreach (var tempGroup in playerData.GroupsList)
-                    permission.AddUserGroup(playerData.UserID, tempGroup.Name);
+                for (int i = 0; i < playerData.PermissionsList.Count; i++)
+                    permission.GrantUserPermission(playerData.UserID, playerData.PermissionsList[i].Name, null);
+                for (int i = 0; i < playerData.GroupsList.Count; i++)
+                    permission.AddUserGroup(playerData.UserID, playerData.GroupsList[i].Name);
             }
-            string[] groupNames = permission.GetGroups();
-            string groupName;
+            string[] groupNames = _existingGroups.ToArray();
             for (int i = 0; i < groupNames.Length; i++)
             {
-                groupName = groupNames[i];
-                if (!_storedData.GroupsList.TryGetValue(groupName, out var groupData)) continue;
-                foreach (var tempPerm in groupData.PermissionsList)
-                    permission.GrantGroupPermission(groupName, tempPerm.Name, null);
+                if (_storedData.GroupsList.TryGetValue(groupNames[i], out var groupData))
+                {
+                    for (int j = 0; j < groupData.PermissionsList.Count; i++)
+                        permission.GrantGroupPermission(groupData.GroupName, groupData.PermissionsList[j].Name, null);
+                }
             }
             _expirationTimer = timer.Every(_config.ExpirationInterval, CheckForExpiration);
             if (_config.PresenceInterval > 0f)
@@ -373,7 +477,10 @@ namespace Oxide.Plugins
             Subscribe(nameof(OnUserPermissionRevoked));
             Subscribe(nameof(OnUserGroupRemoved));
             Subscribe(nameof(OnGroupPermissionRevoked));
+            Subscribe(nameof(OnPermissionRegistered));
+            Subscribe(nameof(OnGroupCreated));
             Subscribe(nameof(OnGroupDeleted));
+            Subscribe(nameof(OnUserNameUpdated));
             Subscribe(nameof(OnServerSave));
             _isReady = true;
             yield return new WaitForSeconds(1);
@@ -382,8 +489,9 @@ namespace Oxide.Plugins
         
         private void CheckForExpiration()
         {
-            var utcNow = DateTime.UtcNow;
             bool isExpired;
+            var utcNow = DateTime.UtcNow;
+            TemporaryPermission tempPermission, tempGroup;
             
             var playersList = _storedData.PlayersList;
             if (playersList.Any())
@@ -397,8 +505,9 @@ namespace Oxide.Plugins
                         continue;
                     }
                     
-                    foreach (var tempPermission in playerData.PermissionsList)
+                    for (int i = playerData.PermissionsList.Count - 1; i >= 0; i--)
                     {
+                        tempPermission = playerData.PermissionsList[i];
                         if (tempPermission.UntilWipe)
                         {
                             if (!tempPermission.AlreadyRemoved) continue;
@@ -408,17 +517,16 @@ namespace Oxide.Plugins
                             isExpired = utcNow > tempPermission.ExpireDate;
                         if (tempPermission.AlreadyRemoved || isExpired)
                         {
-                            tempPermission.AlreadyRemoved = true;
                             permission.RevokeUserPermission(playerData.UserID, tempPermission.Name);
                             if (_config.FileLogs || _config.ConsoleLogs)
-                                SendLog("user_permissions", $"{playerData.DisplayName} ({playerData.UserID}) - Permission has been revoked: '{tempPermission.Name}' | Is expired: {isExpired}");
+                                SendLog(Log_UserPerms, $"'{playerData.DisplayName}' ({playerData.UserID}) - Permission has been revoked: '{tempPermission.Name}' | Is expired: {isExpired}");
                             Interface.CallHook(Hooks_UserPermissionRevoked, playerData.UserID, tempPermission.Name, isExpired);
+                            playerData.PermissionsList.RemoveAt(i);
                         }
                     }
-                    playerData.PermissionsList.RemoveAll(x => x.AlreadyRemoved);
-                    
-                    foreach (var tempGroup in playerData.GroupsList)
+                    for (int i = playerData.GroupsList.Count - 1; i >= 0; i--)
                     {
+                        tempGroup = playerData.GroupsList[i];
                         if (tempGroup.UntilWipe)
                         {
                             if (!tempGroup.AlreadyRemoved) continue;
@@ -428,14 +536,13 @@ namespace Oxide.Plugins
                             isExpired = utcNow > tempGroup.ExpireDate;
                         if (tempGroup.AlreadyRemoved || isExpired)
                         {
-                            tempGroup.AlreadyRemoved = true;
                             permission.RemoveUserGroup(playerData.UserID, tempGroup.Name);
                             if (_config.FileLogs || _config.ConsoleLogs)
-                                SendLog("user_groups", $"{playerData.DisplayName} ({playerData.UserID}) - Has been removed from group: '{tempGroup.Name}' | Is expired: {isExpired}");
+                                SendLog(Log_UserGroups, $"'{playerData.DisplayName}' ({playerData.UserID}) - Has been removed from group: '{tempGroup.Name}' | Is expired: {isExpired}");
                             Interface.CallHook(Hooks_UserGroupRemoved, playerData.UserID, tempGroup.Name, isExpired);
+                            playerData.GroupsList.RemoveAt(i);
                         }
                     }
-                    playerData.GroupsList.RemoveAll(x => x.AlreadyRemoved);
                 }
                 foreach (string userID in usersToRemove)
                     playersList.Remove(userID);
@@ -450,8 +557,9 @@ namespace Oxide.Plugins
                 {
                     if (groupData.PermissionsList.Any())
                     {
-                        foreach (var tempPermission in groupData.PermissionsList)
+                        for (int i = groupData.PermissionsList.Count - 1; i >= 0; i--)
                         {
+                            tempPermission = groupData.PermissionsList[i];
                             if (tempPermission.UntilWipe)
                             {
                                 if (!tempPermission.AlreadyRemoved) continue;
@@ -461,14 +569,13 @@ namespace Oxide.Plugins
                                 isExpired = utcNow > tempPermission.ExpireDate;
                             if (tempPermission.AlreadyRemoved || isExpired)
                             {
-                                tempPermission.AlreadyRemoved = true;
                                 permission.RevokeGroupPermission(groupData.GroupName, tempPermission.Name);
                                 if (_config.FileLogs || _config.ConsoleLogs)
-                                    SendLog("group_permissions", $"{groupData.GroupName} (group) - Permission has been revoked: '{tempPermission.Name}' | Is expired: {isExpired}");
+                                    SendLog(Log_GroupPerms, $"'{groupData.GroupName}' (group) - Permission has been revoked: '{tempPermission.Name}' | Is expired: {isExpired}");
                                 Interface.CallHook(Hooks_GroupPermissionRevoked, groupData.GroupName, tempPermission.Name, isExpired);
+                                groupData.PermissionsList.RemoveAt(i);
                             }
                         }
-                        groupData.PermissionsList.RemoveAll(x => x.AlreadyRemoved);
                     }
                     else
                         groupsToRemove.Add(groupData.GroupName);
@@ -481,60 +588,68 @@ namespace Oxide.Plugins
         
         private void CheckForPresence()
         {
-            HashSet<string> onlineUsers = _config.RevokeOnUnload ? covalence.Players.Connected.Select(player => player.Id).ToHashSet() : null;
+            TemporaryPermission tempPermission, tempGroup;
+            HashSet<string> onlineUsers = _config.RevokeOnUnload ? covalence.Players.Connected.Select(player => player.Id).ToHashSet(StringComparer.OrdinalIgnoreCase) : null;
             foreach (var playerData in _storedData.PlayersList.Values)
             {
                 if (onlineUsers != null && !onlineUsers.Contains(playerData.UserID))
                     continue;
                 
-                foreach (var tempPermission in playerData.PermissionsList)
+                for (int i = 0; i < playerData.PermissionsList.Count; i++)
                 {
+                    tempPermission = playerData.PermissionsList[i];
                     if (!tempPermission.AlreadyRemoved && !UserHasPermission_Helper(playerData.UserID, tempPermission.Name))
                     {
                         if (_config.PresenceRestoring)
                             permission.GrantUserPermission(playerData.UserID, tempPermission.Name, null);
                         else
-                            tempPermission.AlreadyRemoved = true;
+                            tempPermission.MarkAsRemoved(Log_UserPerms, $"The permission '{tempPermission.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation because someone outside the plugin revoked it.");
                     }
                 }
-                
-                foreach (var tempGroup in playerData.GroupsList)
+                for (int i = 0; i < playerData.GroupsList.Count; i++)
                 {
+                    tempGroup = playerData.GroupsList[i];
                     if (!tempGroup.AlreadyRemoved && !UserHasGroup_Helper(playerData.UserID, tempGroup.Name))
                     {
                         if (_config.PresenceRestoring)
                             permission.AddUserGroup(playerData.UserID, tempGroup.Name);
                         else
-                            tempGroup.AlreadyRemoved = true;
+                            tempGroup.MarkAsRemoved(Log_UserGroups, $"The group '{tempGroup.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation because someone outside the plugin revoked it.");
                     }
                 }
             }
             
             foreach (var groupData in _storedData.GroupsList.Values)
             {
-                if (!GroupExists_Helper(groupData.GroupName))
+                if (permission.GetGroupData(groupData.GroupName) == null)
                 {
-                    foreach (var tempPermission in groupData.PermissionsList)
-                        tempPermission.AlreadyRemoved = true;
+                    for (int i = 0; i < groupData.PermissionsList.Count; i++)
+                    {
+                        tempPermission = groupData.PermissionsList[i];
+                        tempPermission.MarkAsRemoved(Log_GroupPerms, $"The permission '{tempPermission.Name}' of group '{groupData.GroupName}' has been marked for revocation because the group was deleted.");
+                    }
                     continue;
                 }
-                foreach (var tempPermission in groupData.PermissionsList)
+                for (int i = 0; i < groupData.PermissionsList.Count; i++)
                 {
+                    tempPermission = groupData.PermissionsList[i];
                     if (!tempPermission.AlreadyRemoved && !GroupHasPermission_Helper(groupData.GroupName, tempPermission.Name))
                     {
                         if (_config.PresenceRestoring)
                             permission.GrantGroupPermission(groupData.GroupName, tempPermission.Name, null);
                         else
-                            tempPermission.AlreadyRemoved = true;
+                            tempPermission.MarkAsRemoved(Log_GroupPerms, $"The permission '{tempPermission.Name}' of group '{groupData.GroupName}' has been marked for revocation because someone outside the plugin revoked it.");
                     }
                 }
             }
         }
         
+        private static string ToLangKey(string langKey) => string.IsNullOrWhiteSpace(langKey) || langKey.Length != 2 || !langKey.All(c => c is >= 'A' and <= 'Z' or >= 'a' and <= 'z') ? "en" : langKey.ToLower(System.Globalization.CultureInfo.InvariantCulture);
+        
         private void SendMessage(IPlayer player, string text, bool isWarning = true)
         {
             if (_config.GameTips_Enabled && !player.IsServer)
-                player.Command("gametip.showtoast", (int)(isWarning ? GameTip.Styles.Error : GameTip.Styles.Blue_Long), text, string.Empty);
+                player.Command(Str_Showtoast, (int)(isWarning ? GameTip.Styles.Error : GameTip.Styles.Blue_Long), text, string.Empty);
             else
                 player.Reply(text);
         }
@@ -549,16 +664,21 @@ namespace Oxide.Plugins
         
         private static PlayerData GetOrCreatePlayerData(string userID, string name)
         {
-            if (!_storedData.PlayersList.TryGetValue(userID, out var playerData))
-                _storedData.PlayersList[userID] = playerData = new PlayerData(userID, name);
-            return playerData;
+            if (!_storedData.PlayersList.TryGetValue(userID, out var result))
+                _storedData.PlayersList[userID] = result = new PlayerData(userID, name);
+            return result;
         }
         
-        private static GroupData GetOrCreateGroupData(string groupName)
+        private GroupData GetOrCreateGroupData(string groupName)
         {
-            if (!_storedData.GroupsList.TryGetValue(groupName, out var groupData))
-                _storedData.GroupsList[groupName] = groupData = new GroupData(groupName);
-            return groupData;
+            if (GroupExists_Helper(groupName, out var actualName))
+                groupName = actualName;
+            
+            if (!_storedData.GroupsList.TryGetValue(groupName, out var result))
+                _storedData.GroupsList[groupName] = result = new GroupData(groupName);
+            else if (!string.Equals(result.GroupName, groupName, StringComparison.Ordinal))
+                result.UpdateGroupName(groupName);
+            return result;
         }
         
         private bool TryGetPlayer(IPlayer initiator, string nameOrId, out IPlayer result, bool skipInitiator = true, bool all = true)
@@ -619,16 +739,17 @@ namespace Oxide.Plugins
             return result != null;
         }
         
-        private bool UserHasPermission_Helper(string userID, string perm) => permission.GetUserData(userID).Perms.Contains<string>(perm, StringComparer.OrdinalIgnoreCase);
+        private bool UserHasPermission_Helper(string userID, string permName) => permission.GetUserData(userID).Perms.Contains<string>(permName, StringComparer.OrdinalIgnoreCase);
         private bool UserHasGroup_Helper(string userID, string groupName) => permission.GetUserData(userID).Groups.Contains<string>(groupName, StringComparer.OrdinalIgnoreCase);
         
-        private bool GroupHasPermission_Helper(string groupName, string perm)
+        private bool GroupHasPermission_Helper(string groupName, string permName)
         {
             var group = permission.GetGroupData(groupName);
-            return group != null && group.Perms.Contains<string>(perm, StringComparer.OrdinalIgnoreCase);
+            return group != null && group.Perms.Contains<string>(permName, StringComparer.OrdinalIgnoreCase);
         }
         
-        private bool GroupExists_Helper(string groupName) => permission.GetGroupData(groupName) != null;
+        private bool PermissionExists_Helper(string input, out string permName) => _existingPerms.TryGetValue(input, out permName);
+        private bool GroupExists_Helper(string input, out string groupName) => _existingGroups.TryGetValue(input, out groupName);
         #endregion
 
         #region ~Server Command~
@@ -648,8 +769,7 @@ namespace Oxide.Plugins
         
         private void CommandGrant(string[] args)
         {
-            if (args.Length < 4 || !permission.PermissionExists(args[2])) return;
-            string perm = args[2];
+            if (args.Length < 4 || !PermissionExists_Helper(args[2], out var permName)) return;
             if (args[0] == CommandUser)
             {
                 //          0     1        2                3                     4 - optional
@@ -657,15 +777,27 @@ namespace Oxide.Plugins
                 if (!TryGetPlayerOxideCmd(args[1], out var player)) return;
                 NextTick(() =>
                 {
-                    if (UserHasPermission_Helper(player.Id, perm))
+                    if (UserHasPermission_Helper(player.Id, permName))
                     {
                         var playerData = GetOrCreatePlayerData(player.Id, player.Name);
-                        if (args[3] == Str_Wipe)
-                            GrantTemporaryPermission(playerData, perm, false);
+                        if (args[3].Equals(Str_Wipe, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_UserPerms, $"Method call 'GrantTemporaryPermission(wipe)' to grant permission '{permName}' to player '{playerData.DisplayName}' ({playerData.UserID}) as a result of using the console Oxide/Carbon grant command.");
+                            GrantTemporaryPermission(playerData, permName, false);
+                        }
                         else if (int.TryParse(args[3], out var secondsToAdd))
-                            GrantTemporaryPermission(playerData, perm, secondsToAdd, args.Length > 4 && bool.TryParse(args[4], out var fromNow) ? fromNow : false, false);
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_UserPerms, $"Method call 'GrantTemporaryPermission(seconds)' to grant permission '{permName}' to player '{playerData.DisplayName}' ({playerData.UserID}) as a result of using the console Oxide/Carbon grant command.");
+                            GrantTemporaryPermission(playerData, permName, secondsToAdd, args.Length > 4 && bool.TryParse(args[4], out var fromNow) ? fromNow : false, false);
+                        }
                         else if (DateTime.TryParse(args[3], out var expireDate))
-                            GrantTemporaryPermission(playerData, perm, expireDate, args.Length > 4 && DateTime.TryParse(args[4], out var assignedDate) ? assignedDate : default, false);
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_UserPerms, $"Method call 'GrantTemporaryPermission(DateTime)' to grant permission '{permName}' to player '{playerData.DisplayName}' ({playerData.UserID}) as a result of using the console Oxide/Carbon grant command.");
+                            GrantTemporaryPermission(playerData, permName, expireDate, args.Length > 4 && DateTime.TryParse(args[4], out var assignedDate) ? assignedDate : default, false);
+                        }
                     }
                 });
             }
@@ -673,19 +805,30 @@ namespace Oxide.Plugins
             {
                 //          0     1        2                3                     4 - optional
                 //o.grant group admin realpve.vip wipe/seconds/DATETIME (true/false)/DATETIME
-                string groupName = args[1];
-                if (!GroupExists_Helper(groupName)) return;
+                if (!GroupExists_Helper(args[1], out var groupName)) return;
                 NextTick(() =>
                 {
-                    if (GroupHasPermission_Helper(groupName, perm))
+                    if (GroupHasPermission_Helper(groupName, permName))
                     {
                         var groupData = GetOrCreateGroupData(groupName);
-                        if (args[3] == Str_Wipe)
-                            GrantTemporaryPermission(groupData, perm, false);
+                        if (args[3].Equals(Str_Wipe, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_GroupPerms, $"Method call 'GrantTemporaryPermission(wipe)' to grant permission '{permName}' to group '{groupData.GroupName}' as a result of using the console Oxide/Carbon grant command.");
+                            GrantTemporaryPermission(groupData, permName, false);
+                        }
                         else if (int.TryParse(args[3], out var secondsToAdd))
-                            GrantTemporaryPermission(groupData, perm, secondsToAdd, args.Length > 4 && bool.TryParse(args[4], out var fromNow) ? fromNow : false, false);
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_GroupPerms, $"Method call 'GrantTemporaryPermission(seconds)' to grant permission '{permName}' to group '{groupData.GroupName}' as a result of using the console Oxide/Carbon grant command.");
+                            GrantTemporaryPermission(groupData, permName, secondsToAdd, args.Length > 4 && bool.TryParse(args[4], out var fromNow) ? fromNow : false, false);
+                        }
                         else if (DateTime.TryParse(args[3], out var expireDate))
-                            GrantTemporaryPermission(groupData, perm, expireDate, args.Length > 4 && DateTime.TryParse(args[4], out var assignedDate) ? assignedDate : default, false);
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_GroupPerms, $"Method call 'GrantTemporaryPermission(DateTime)' to grant permission '{permName}' to group '{groupData.GroupName}' as a result of using the console Oxide/Carbon grant command.");
+                            GrantTemporaryPermission(groupData, permName, expireDate, args.Length > 4 && DateTime.TryParse(args[4], out var assignedDate) ? assignedDate : default, false);
+                        }
                     }
                 });
             }
@@ -693,20 +836,19 @@ namespace Oxide.Plugins
 
         private void CommandRevoke(string[] args)
         {
-            if (args.Length < 3) return;
-            string perm = args[2];
+            if (args.Length < 3 || !PermissionExists_Helper(args[2], out var permName)) return;
             if (args[0] == CommandUser)
             {
                 //           0     1        2
                 //o.revoke user iiiaka realpve.vip
                 if (!_storedData.PlayersList.TryGetValue(args[1], out var playerData)) return;
-                var tempPermission = playerData.PermissionsList.FirstOrDefault(p => p.Name.Equals(perm, StringComparison.OrdinalIgnoreCase));
+                var tempPermission = playerData.PermissionsList.FirstOrDefault(p => p.Name.Equals(permName, StringComparison.OrdinalIgnoreCase));
                 if (tempPermission != null && !tempPermission.AlreadyRemoved)
                 {
                     NextTick(() =>
                     {
-                        if (!UserHasPermission_Helper(args[1], perm))
-                            tempPermission.AlreadyRemoved = true;
+                        if (!UserHasPermission_Helper(playerData.UserID, tempPermission.Name))
+                            tempPermission.MarkAsRemoved(Log_UserPerms, $"The permission '{tempPermission.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation as a result of using the console Oxide/Carbon revoke command.");
                     });
                 }
             }
@@ -714,15 +856,14 @@ namespace Oxide.Plugins
             {
                 //           0     1        2
                 //o.revoke group admin realpve.vip
-                string groupName = args[1];
-                if (!GroupExists_Helper(groupName) || !_storedData.GroupsList.TryGetValue(groupName, out var groupData)) return;
-                var tempPermission = groupData.PermissionsList.FirstOrDefault(p => p.Name.Equals(perm, StringComparison.OrdinalIgnoreCase));
+                if (!GroupExists_Helper(args[1], out var groupName) || !_storedData.GroupsList.TryGetValue(groupName, out var groupData)) return;
+                var tempPermission = groupData.PermissionsList.FirstOrDefault(p => p.Name.Equals(permName, StringComparison.OrdinalIgnoreCase));
                 if (tempPermission != null && !tempPermission.AlreadyRemoved)
                 {
                     NextTick(() =>
                     {
-                        if (!GroupHasPermission_Helper(groupName, perm))
-                            tempPermission.AlreadyRemoved = true;
+                        if (!GroupHasPermission_Helper(groupData.GroupName, tempPermission.Name))
+                            tempPermission.MarkAsRemoved(Log_GroupPerms, $"The permission '{tempPermission.Name}' of group '{groupData.GroupName}' has been marked for revocation as a result of using the console Oxide/Carbon revoke command.");
                     });
                 }
             }
@@ -730,8 +871,7 @@ namespace Oxide.Plugins
 
         private void CommandUserGroup(string[] args)
         {
-            if (args.Length < 4 || !TryGetPlayerOxideCmd(args[1], out var player) || !GroupExists_Helper(args[2])) return;
-            string groupName = args[2];
+            if (args.Length < 4 || !TryGetPlayerOxideCmd(args[1], out var player) || !GroupExists_Helper(args[2], out var groupName)) return;
             if (args[0] == CommandAdd)
             {
                 //             0     1     2             3                     4 - optional
@@ -741,12 +881,24 @@ namespace Oxide.Plugins
                     if (UserHasGroup_Helper(player.Id, groupName))
                     {
                         var playerData = GetOrCreatePlayerData(player.Id, player.Name);
-                        if (args[3] == Str_Wipe)
+                        if (args[3].Equals(Str_Wipe, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_UserPerms, $"Method call 'AddTemporaryGroup(wipe)' to grant group '{groupName}' to player '{playerData.DisplayName}' ({playerData.UserID}) as a result of using the console Oxide/Carbon add command.");
                             AddTemporaryGroup(playerData, groupName, false);
+                        }
                         else if (int.TryParse(args[3], out var secondsToAdd))
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_UserPerms, $"Method call 'AddTemporaryGroup(seconds)' to grant group '{groupName}' to player '{playerData.DisplayName}' ({playerData.UserID}) as a result of using the console Oxide/Carbon add command.");
                             AddTemporaryGroup(playerData, groupName, secondsToAdd, args.Length > 4 && bool.TryParse(args[4], out var fromNow) ? fromNow : false, false);
+                        }
                         else if (DateTime.TryParse(args[3], out var expireDate))
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_UserPerms, $"Method call 'AddTemporaryGroup(DateTime)' to grant group '{groupName}' to player '{playerData.DisplayName}' ({playerData.UserID}) as a result of using the console Oxide/Carbon add command.");
                             AddTemporaryGroup(playerData, groupName, expireDate, args.Length > 4 && DateTime.TryParse(args[4], out var assignedDate) ? assignedDate : default, false);
+                        }
                     }
                 });
             }
@@ -754,13 +906,13 @@ namespace Oxide.Plugins
             {
                 //               0      1     2
                 //o.usergroup remove iiiaka admin
-                var tempPermission = playerData.GroupsList.FirstOrDefault(p => p.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
-                if (tempPermission != null && !tempPermission.AlreadyRemoved)
+                var tempGroup = playerData.GroupsList.FirstOrDefault(p => p.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
+                if (tempGroup != null && !tempGroup.AlreadyRemoved)
                 {
                     NextTick(() =>
                     {
-                        if (!UserHasGroup_Helper(player.Id, groupName))
-                            tempPermission.AlreadyRemoved = true;
+                        if (!UserHasGroup_Helper(playerData.UserID, tempGroup.Name))
+                            tempGroup.MarkAsRemoved(Log_UserGroups, $"The group '{tempGroup.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation as a result of using the console Oxide/Carbon revoke command.");
                     });
                 }
             }
@@ -768,67 +920,69 @@ namespace Oxide.Plugins
         #endregion
 
         #region ~Local~
-        private void GrantTemporaryPermission(PlayerData playerData, string perm, bool shouldGrant = true)
+        private void GrantTemporaryPermission(PlayerData playerData, string permName, bool shouldGrant = true)
         {
             if (shouldGrant)
-                permission.GrantUserPermission(playerData.UserID, perm, null);
+                permission.GrantUserPermission(playerData.UserID, permName, null);
             TemporaryPermission tempPermission;
             for (int i = 0; i < playerData.PermissionsList.Count; i++)
             {
                 tempPermission = playerData.PermissionsList[i];
-                if (tempPermission.Name.Equals(perm, StringComparison.OrdinalIgnoreCase))
+                if (tempPermission.Name.Equals(permName, StringComparison.OrdinalIgnoreCase))
                 {
+                    if (!string.Equals(tempPermission.Name, permName, StringComparison.Ordinal))
+                        tempPermission.UpdateName(permName);
                     tempPermission.ExpireDate = default;
                     tempPermission.UntilWipe = true;
                     tempPermission.AlreadyRemoved = false;
                     if (_config.FileLogs || _config.ConsoleLogs)
-                        SendLog("user_permissions", $"{playerData.DisplayName} ({playerData.UserID}) - Permission has been extended: '{tempPermission.Name}' until the wipe");
+                        SendLog(Log_UserPerms, $"'{playerData.DisplayName}' ({playerData.UserID}) - Permission has been extended: '{tempPermission.Name}' until the wipe");
                     Interface.CallHook(Hooks_UserPermissionUpdated, playerData.UserID, tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate);
                     return;
                 }
             }
-            tempPermission = new TemporaryPermission(perm);
+            tempPermission = new TemporaryPermission(permName);
             playerData.PermissionsList.Add(tempPermission);
             if (_config.FileLogs || _config.ConsoleLogs)
-                SendLog("user_permissions", $"{playerData.DisplayName} ({playerData.UserID}) - Permission has been granted: '{tempPermission.Name}' until the wipe");
+                SendLog(Log_UserPerms, $"'{playerData.DisplayName}' ({playerData.UserID}) - Permission has been granted: '{tempPermission.Name}' until the wipe");
             Interface.CallHook(Hooks_UserPermissionGranted, playerData.UserID, tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate);
         }
         
-        private void GrantTemporaryPermission(PlayerData playerData, string perm, int secondsToAdd, bool fromNow, bool shouldGrant = true)
+        private void GrantTemporaryPermission(PlayerData playerData, string permName, int secondsToAdd, bool fromNow, bool shouldGrant = true)
         {
             if (shouldGrant)
-                permission.GrantUserPermission(playerData.UserID, perm, null);
+                permission.GrantUserPermission(playerData.UserID, permName, null);
             TemporaryPermission tempPermission;
             for (int i = 0; i < playerData.PermissionsList.Count; i++)
             {
                 tempPermission = playerData.PermissionsList[i];
-                if (tempPermission.Name.Equals(perm, StringComparison.OrdinalIgnoreCase))
+                if (tempPermission.Name.Equals(permName, StringComparison.OrdinalIgnoreCase))
                 {
                     tempPermission.ExpireDate = fromNow || tempPermission.ExpireDate == default ? DateTime.UtcNow.AddSeconds(secondsToAdd) : tempPermission.ExpireDate.AddSeconds(secondsToAdd);
                     tempPermission.UntilWipe = false;
                     tempPermission.AlreadyRemoved = false;
                     if (_config.FileLogs || _config.ConsoleLogs)
-                        SendLog("user_permissions", $"{playerData.DisplayName} ({playerData.UserID}) - Permission has been extended: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
+                        SendLog(Log_UserPerms, $"'{playerData.DisplayName}' ({playerData.UserID}) - Permission has been extended: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
                     Interface.CallHook(Hooks_UserPermissionUpdated, playerData.UserID, tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate);
                     return;
                 }
             }
-            tempPermission = new TemporaryPermission(perm, secondsToAdd);
+            tempPermission = new TemporaryPermission(permName, secondsToAdd);
             playerData.PermissionsList.Add(tempPermission);
             if (_config.FileLogs || _config.ConsoleLogs)
-                SendLog("user_permissions", $"{playerData.DisplayName} ({playerData.UserID}) - Permission has been granted: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
+                SendLog(Log_UserPerms, $"'{playerData.DisplayName}' ({playerData.UserID}) - Permission has been granted: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
             Interface.CallHook(Hooks_UserPermissionGranted, playerData.UserID, tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate);
         }
         
-        private void GrantTemporaryPermission(PlayerData playerData, string perm, DateTime expireDate, DateTime assignedDate, bool shouldGrant = true)
+        private void GrantTemporaryPermission(PlayerData playerData, string permName, DateTime expireDate, DateTime assignedDate, bool shouldGrant = true)
         {
             if (shouldGrant)
-                permission.GrantUserPermission(playerData.UserID, perm, null);
+                permission.GrantUserPermission(playerData.UserID, permName, null);
             TemporaryPermission tempPermission;
             for (int i = 0; i < playerData.PermissionsList.Count; i++)
             {
                 tempPermission = playerData.PermissionsList[i];
-                if (tempPermission.Name.Equals(perm, StringComparison.OrdinalIgnoreCase))
+                if (tempPermission.Name.Equals(permName, StringComparison.OrdinalIgnoreCase))
                 {
                     if (assignedDate != default)
                         tempPermission.AssignedDate = assignedDate;
@@ -836,15 +990,15 @@ namespace Oxide.Plugins
                     tempPermission.UntilWipe = false;
                     tempPermission.AlreadyRemoved = false;
                     if (_config.FileLogs || _config.ConsoleLogs)
-                        SendLog("user_permissions", $"{playerData.DisplayName} ({playerData.UserID}) - Permission has been extended: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
+                        SendLog(Log_UserPerms, $"'{playerData.DisplayName}' ({playerData.UserID}) - Permission has been extended: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
                     Interface.CallHook(Hooks_UserPermissionUpdated, playerData.UserID, tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate);
                     return;
                 }
             }
-            tempPermission = new TemporaryPermission(perm, expireDate, assignedDate);
+            tempPermission = new TemporaryPermission(permName, expireDate, assignedDate);
             playerData.PermissionsList.Add(tempPermission);
             if (_config.FileLogs || _config.ConsoleLogs)
-                SendLog("user_permissions", $"{playerData.DisplayName} ({playerData.UserID}) - Permission has been granted: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
+                SendLog(Log_UserPerms, $"'{playerData.DisplayName}' ({playerData.UserID}) - Permission has been granted: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
             Interface.CallHook(Hooks_UserPermissionGranted, playerData.UserID, tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate);
         }
         
@@ -862,7 +1016,7 @@ namespace Oxide.Plugins
                     tempGroup.UntilWipe = true;
                     tempGroup.AlreadyRemoved = false;
                     if (_config.FileLogs || _config.ConsoleLogs)
-                        SendLog("user_groups", $"{playerData.DisplayName} ({playerData.UserID}) - Extended time for participating in group: '{tempGroup.Name}' until the wipe");
+                        SendLog(Log_UserGroups, $"'{playerData.DisplayName}' ({playerData.UserID}) - Extended time for participating in group: '{tempGroup.Name}' until the wipe");
                     Interface.CallHook(Hooks_UserGroupUpdated, playerData.UserID, tempGroup.Name, tempGroup.ExpireDate, tempGroup.AssignedDate);
                     return;
                 }
@@ -870,7 +1024,7 @@ namespace Oxide.Plugins
             tempGroup = new TemporaryPermission(groupName);
             playerData.GroupsList.Add(tempGroup);
             if (_config.FileLogs || _config.ConsoleLogs)
-                SendLog("user_groups", $"{playerData.DisplayName} ({playerData.UserID}) - Added to group: '{tempGroup.Name}' until the wipe");
+                SendLog(Log_UserGroups, $"'{playerData.DisplayName}' ({playerData.UserID}) - Added to group: '{tempGroup.Name}' until the wipe");
             Interface.CallHook(Hooks_UserGroupAdded, playerData.UserID, tempGroup.Name, tempGroup.ExpireDate, tempGroup.AssignedDate);
         }
         
@@ -888,7 +1042,7 @@ namespace Oxide.Plugins
                     tempGroup.UntilWipe = false;
                     tempGroup.AlreadyRemoved = false;
                     if (_config.FileLogs || _config.ConsoleLogs)
-                        SendLog("user_groups", $"{playerData.DisplayName} ({playerData.UserID}) - Extended time for participating in group: '{tempGroup.Name}' until {tempGroup.ExpireDate.ToString(TimeFormat)}(UTC)");
+                        SendLog(Log_UserGroups, $"'{playerData.DisplayName}' ({playerData.UserID}) - Extended time for participating in group: '{tempGroup.Name}' until {tempGroup.ExpireDate.ToString(TimeFormat)}(UTC)");
                     Interface.CallHook(Hooks_UserGroupUpdated, playerData.UserID, tempGroup.Name, tempGroup.ExpireDate, tempGroup.AssignedDate);
                     return;
                 }
@@ -896,7 +1050,7 @@ namespace Oxide.Plugins
             tempGroup = new TemporaryPermission(groupName, secondsToAdd);
             playerData.GroupsList.Add(tempGroup);
             if (_config.FileLogs || _config.ConsoleLogs)
-                SendLog("user_groups", $"{playerData.DisplayName} ({playerData.UserID}) - Added to group: '{tempGroup.Name}' until {tempGroup.ExpireDate.ToString(TimeFormat)}(UTC)");
+                SendLog(Log_UserGroups, $"'{playerData.DisplayName}' ({playerData.UserID}) - Added to group: '{tempGroup.Name}' until {tempGroup.ExpireDate.ToString(TimeFormat)}(UTC)");
             Interface.CallHook(Hooks_UserGroupAdded, playerData.UserID, tempGroup.Name, tempGroup.ExpireDate, tempGroup.AssignedDate);
         }
         
@@ -916,7 +1070,7 @@ namespace Oxide.Plugins
                     tempGroup.UntilWipe = false;
                     tempGroup.AlreadyRemoved = false;
                     if (_config.FileLogs || _config.ConsoleLogs)
-                        SendLog("user_groups", $"{playerData.DisplayName} ({playerData.UserID}) - Extended time for participating in group: '{tempGroup.Name}' until {tempGroup.ExpireDate.ToString(TimeFormat)}(UTC)");
+                        SendLog(Log_UserGroups, $"'{playerData.DisplayName}' ({playerData.UserID}) - Extended time for participating in group: '{tempGroup.Name}' until {tempGroup.ExpireDate.ToString(TimeFormat)}(UTC)");
                     Interface.CallHook(Hooks_UserGroupUpdated, playerData.UserID, tempGroup.Name, tempGroup.ExpireDate, tempGroup.AssignedDate);
                     return;
                 }
@@ -924,71 +1078,71 @@ namespace Oxide.Plugins
             tempGroup = new TemporaryPermission(groupName, expireDate, assignedDate);
             playerData.GroupsList.Add(tempGroup);
             if (_config.FileLogs || _config.ConsoleLogs)
-                SendLog("user_groups", $"{playerData.DisplayName} ({playerData.UserID}) - Added to group: '{tempGroup.Name}' until {tempGroup.ExpireDate.ToString(TimeFormat)}(UTC)");
+                SendLog(Log_UserGroups, $"'{playerData.DisplayName}' ({playerData.UserID}) - Added to group: '{tempGroup.Name}' until {tempGroup.ExpireDate.ToString(TimeFormat)}(UTC)");
             Interface.CallHook(Hooks_UserGroupAdded, playerData.UserID, tempGroup.Name, tempGroup.ExpireDate, tempGroup.AssignedDate);
         }
         
-        private void GrantTemporaryPermission(GroupData groupData, string perm, bool shouldGrant = true)
+        private void GrantTemporaryPermission(GroupData groupData, string permName, bool shouldGrant = true)
         {
             if (shouldGrant)
-                permission.GrantGroupPermission(groupData.GroupName, perm, null);
+                permission.GrantGroupPermission(groupData.GroupName, permName, null);
             TemporaryPermission tempPermission;
             for (int i = 0; i < groupData.PermissionsList.Count; i++)
             {
                 tempPermission = groupData.PermissionsList[i];
-                if (tempPermission.Name.Equals(perm, StringComparison.OrdinalIgnoreCase))
+                if (tempPermission.Name.Equals(permName, StringComparison.OrdinalIgnoreCase))
                 {
                     tempPermission.ExpireDate = default;
                     tempPermission.UntilWipe = true;
                     tempPermission.AlreadyRemoved = false;
                     if (_config.FileLogs || _config.ConsoleLogs)
-                        SendLog("group_permissions", $"{groupData.GroupName} (group) - Permission has been extended: '{tempPermission.Name}' until the wipe");
+                        SendLog(Log_GroupPerms, $"'{groupData.GroupName}' (group) - Permission has been extended: '{tempPermission.Name}' until the wipe");
                     Interface.CallHook(Hooks_GroupPermissionUpdated, groupData.GroupName, tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate);
                     return;
                 }
             }
-            tempPermission = new TemporaryPermission(perm);
+            tempPermission = new TemporaryPermission(permName);
             groupData.PermissionsList.Add(tempPermission);
             if (_config.FileLogs || _config.ConsoleLogs)
-                SendLog("group_permissions", $"{groupData.GroupName} (group) - Permission has been granted: '{tempPermission.Name}' until the wipe");
+                SendLog(Log_GroupPerms, $"'{groupData.GroupName}' (group) - Permission has been granted: '{tempPermission.Name}' until the wipe");
             Interface.CallHook(Hooks_GroupPermissionGranted, groupData.GroupName, tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate);
         }
         
-        private void GrantTemporaryPermission(GroupData groupData, string perm, int secondsToAdd, bool fromNow, bool shouldGrant = true)
+        private void GrantTemporaryPermission(GroupData groupData, string permName, int secondsToAdd, bool fromNow, bool shouldGrant = true)
         {
             if (shouldGrant)
-                permission.GrantGroupPermission(groupData.GroupName, perm, null);
+                permission.GrantGroupPermission(groupData.GroupName, permName, null);
             TemporaryPermission tempPermission;
             for (int i = 0; i < groupData.PermissionsList.Count; i++)
             {
                 tempPermission = groupData.PermissionsList[i];
-                if (tempPermission.Name.Equals(perm, StringComparison.OrdinalIgnoreCase))
+                if (tempPermission.Name.Equals(permName, StringComparison.OrdinalIgnoreCase))
                 {
                     tempPermission.ExpireDate = fromNow || tempPermission.ExpireDate == default ? DateTime.UtcNow.AddSeconds(secondsToAdd) : tempPermission.ExpireDate.AddSeconds(secondsToAdd);
                     tempPermission.UntilWipe = false;
                     tempPermission.AlreadyRemoved = false;
                     if (_config.FileLogs || _config.ConsoleLogs)
-                        SendLog("group_permissions", $"{groupData.GroupName} (group) - Permission has been extended: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
+                        SendLog(Log_GroupPerms, $"'{groupData.GroupName}' (group) - Permission has been extended: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
                     Interface.CallHook(Hooks_GroupPermissionUpdated, groupData.GroupName, tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate);
                     return;
                 }
             }
-            tempPermission = new TemporaryPermission(perm, secondsToAdd);
+            tempPermission = new TemporaryPermission(permName, secondsToAdd);
             groupData.PermissionsList.Add(tempPermission);
             if (_config.FileLogs || _config.ConsoleLogs)
-                SendLog("group_permissions", $"{groupData.GroupName} (group) - Permission has been granted: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
+                SendLog(Log_GroupPerms, $"'{groupData.GroupName}' (group) - Permission has been granted: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
             Interface.CallHook(Hooks_GroupPermissionGranted, groupData.GroupName, tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate);
         }
         
-        private void GrantTemporaryPermission(GroupData groupData, string perm, DateTime expireDate, DateTime assignedDate, bool shouldGrant = true)
+        private void GrantTemporaryPermission(GroupData groupData, string permName, DateTime expireDate, DateTime assignedDate, bool shouldGrant = true)
         {
             if (shouldGrant)
-                permission.GrantGroupPermission(groupData.GroupName, perm, null);
+                permission.GrantGroupPermission(groupData.GroupName, permName, null);
             TemporaryPermission tempPermission;
             for (int i = 0; i < groupData.PermissionsList.Count; i++)
             {
                 tempPermission = groupData.PermissionsList[i];
-                if (tempPermission.Name.Equals(perm, StringComparison.OrdinalIgnoreCase))
+                if (tempPermission.Name.Equals(permName, StringComparison.OrdinalIgnoreCase))
                 {
                     if (assignedDate != default)
                         tempPermission.AssignedDate = assignedDate;
@@ -996,15 +1150,15 @@ namespace Oxide.Plugins
                     tempPermission.UntilWipe = false;
                     tempPermission.AlreadyRemoved = false;
                     if (_config.FileLogs || _config.ConsoleLogs)
-                        SendLog("group_permissions", $"{groupData.GroupName} (group) - Permission has been extended: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
+                        SendLog(Log_GroupPerms, $"'{groupData.GroupName}' (group) - Permission has been extended: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
                     Interface.CallHook(Hooks_GroupPermissionUpdated, groupData.GroupName, tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate);
                     return;
                 }
             }
-            tempPermission = new TemporaryPermission(perm, expireDate, assignedDate);
+            tempPermission = new TemporaryPermission(permName, expireDate, assignedDate);
             groupData.PermissionsList.Add(tempPermission);
             if (_config.FileLogs || _config.ConsoleLogs)
-                SendLog("group_permissions", $"{groupData.GroupName} (group) - Permission has been granted: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
+                SendLog(Log_GroupPerms, $"'{groupData.GroupName}' (group) - Permission has been granted: '{tempPermission.Name}' until {tempPermission.ExpireDate.ToString(TimeFormat)}(UTC)");
             Interface.CallHook(Hooks_GroupPermissionGranted, groupData.GroupName, tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate);
         }
         #endregion
@@ -1018,12 +1172,16 @@ namespace Oxide.Plugins
         private bool GrantUserPermission(BasePlayer player, string permName, int secondsToAdd, bool fromNow = false, bool checkExistence = true) => GrantUserPermission(player.IPlayer, permName, secondsToAdd, fromNow, checkExistence);
         private bool GrantUserPermission(IPlayer player, string permName, int secondsToAdd, bool fromNow = false, bool checkExistence = true)
         {
-            if (player != null && (!checkExistence || permission.PermissionExists(permName)))
+            if (player != null && (!checkExistence || PermissionExists_Helper(permName, out permName)))
             {
+                var playerData = GetOrCreatePlayerData(player.Id, player.Name);
+                if (_config.FileLogs || _config.ConsoleLogs)
+                    SendLog(Log_UserPerms, $"Method call 'GrantTemporaryPermission({(secondsToAdd < 1 ? "wipe" : "seconds")})' to grant permission '{permName}' to player '{playerData.DisplayName}' ({playerData.UserID}) as a result of using the API method 'GrantUserPermission'.");
+                
                 if (secondsToAdd < 1)
-                    GrantTemporaryPermission(GetOrCreatePlayerData(player.Id, player.Name), permName);
+                    GrantTemporaryPermission(playerData, permName);
                 else
-                    GrantTemporaryPermission(GetOrCreatePlayerData(player.Id, player.Name), permName, secondsToAdd, fromNow);
+                    GrantTemporaryPermission(playerData, permName, secondsToAdd, fromNow);
                 return true;
             }
             return false;
@@ -1033,9 +1191,13 @@ namespace Oxide.Plugins
         private bool GrantUserPermission(BasePlayer player, string permName, DateTime expireDate, DateTime assignedDate = default, bool checkExistence = true) => GrantUserPermission(player.IPlayer, permName, expireDate, assignedDate, checkExistence);
         private bool GrantUserPermission(IPlayer player, string permName, DateTime expireDate, DateTime assignedDate = default, bool checkExistence = true)
         {
-            if (player != null && (!checkExistence || permission.PermissionExists(permName)))
+            if (player != null && (!checkExistence || PermissionExists_Helper(permName, out permName)))
             {
-                GrantTemporaryPermission(GetOrCreatePlayerData(player.Id, player.Name), permName, expireDate, assignedDate);
+                var playerData = GetOrCreatePlayerData(player.Id, player.Name);
+                if (_config.FileLogs || _config.ConsoleLogs)
+                    SendLog(Log_UserPerms, $"Method call 'GrantTemporaryPermission(DateTime)' to grant permission '{permName}' to player '{playerData.DisplayName}' ({playerData.UserID}) as a result of using the API method 'GrantUserPermission'.");
+                
+                GrantTemporaryPermission(playerData, permName, expireDate, assignedDate);
                 return true;
             }
             return false;
@@ -1050,7 +1212,7 @@ namespace Oxide.Plugins
                 var tempPermission = playerData.PermissionsList.FirstOrDefault(p => p.Name.Equals(permName, StringComparison.OrdinalIgnoreCase));
                 if (tempPermission != null)
                 {
-                    tempPermission.AlreadyRemoved = true;
+                    tempPermission.MarkAsRemoved(Log_UserPerms, $"The permission '{tempPermission.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation as a result of using the API method 'RevokeUserPermission'.");
                     return true;
                 }
             }
@@ -1077,7 +1239,7 @@ namespace Oxide.Plugins
         private int GrantActiveUsersPermission(string permName, int secondsToAdd, bool fromNow = false)
         {
             int result = 0;
-            if (permission.PermissionExists(permName))
+            if (PermissionExists_Helper(permName, out permName))
             {
                 foreach (var player in covalence.Players.Connected)
                 {
@@ -1091,7 +1253,7 @@ namespace Oxide.Plugins
         private int GrantActiveUsersPermission(string permName, DateTime expireDate, DateTime assignedDate = default)
         {
             int result = 0;
-            if (permission.PermissionExists(permName))
+            if (PermissionExists_Helper(permName, out permName))
             {
                 foreach (var player in covalence.Players.Connected)
                 {
@@ -1105,7 +1267,7 @@ namespace Oxide.Plugins
         private int GrantAllUsersPermission(string permName, int secondsToAdd, bool fromNow = false)
         {
             int result = 0;
-            if (permission.PermissionExists(permName))
+            if (PermissionExists_Helper(permName, out permName))
             {
                 foreach (var player in covalence.Players.All)
                 {
@@ -1119,7 +1281,7 @@ namespace Oxide.Plugins
         private int GrantAllUsersPermission(string permName, DateTime expireDate, DateTime assignedDate = default)
         {
             int result = 0;
-            if (permission.PermissionExists(permName))
+            if (PermissionExists_Helper(permName, out permName))
             {
                 foreach (var player in covalence.Players.All)
                 {
@@ -1194,7 +1356,7 @@ namespace Oxide.Plugins
                 if (_storedData.GroupsList.TryGetValue(groups[i], out var groupData))
                 {
                     tempPermission = groupData.PermissionsList.FirstOrDefault(p => p.Name.Equals(permName, StringComparison.OrdinalIgnoreCase));
-                    if (tempPermission != null && !tempPermission.AlreadyRemoved && tempPermission.ExpireDate > result[1])
+                    if (tempPermission != null && !tempPermission.AlreadyRemoved)
                     {
                         result[0] = tempPermission.AssignedDate;
                         result[1] = tempPermission.ExpireDate;
@@ -1278,12 +1440,16 @@ namespace Oxide.Plugins
         private bool AddUserGroup(BasePlayer player, string groupName, int secondsToAdd, bool fromNow = false, bool checkExistence = true) => AddUserGroup(player.IPlayer, groupName, secondsToAdd, fromNow, checkExistence);
         private bool AddUserGroup(IPlayer player, string groupName, int secondsToAdd, bool fromNow = false, bool checkExistence = true)
         {
-            if (player != null && (!checkExistence || permission.GroupExists(groupName)))
+            if (player != null && (!checkExistence || GroupExists_Helper(groupName, out groupName)))
             {
+                var playerData = GetOrCreatePlayerData(player.Id, player.Name);
+                if (_config.FileLogs || _config.ConsoleLogs)
+                    SendLog(Log_UserGroups, $"Method call 'AddTemporaryGroup({(secondsToAdd < 1 ? "wipe" : "seconds")})' to grant group '{groupName}' to player '{playerData.DisplayName}' ({playerData.UserID}) as a result of using the API method 'AddUserGroup'.");
+                
                 if (secondsToAdd < 1)
-                    AddTemporaryGroup(GetOrCreatePlayerData(player.Id, player.Name), groupName);
+                    AddTemporaryGroup(playerData, groupName);
                 else
-                    AddTemporaryGroup(GetOrCreatePlayerData(player.Id, player.Name), groupName, secondsToAdd, fromNow);
+                    AddTemporaryGroup(playerData, groupName, secondsToAdd, fromNow);
                 return true;
             }
             return false;
@@ -1293,9 +1459,13 @@ namespace Oxide.Plugins
         private bool AddUserGroup(BasePlayer player, string groupName, DateTime expireDate, DateTime assignedDate = default, bool checkExistence = true) => AddUserGroup(player.IPlayer, groupName, expireDate, assignedDate, checkExistence);
         private bool AddUserGroup(IPlayer player, string groupName, DateTime expireDate, DateTime assignedDate = default, bool checkExistence = true)
         {
-            if (player != null && (!checkExistence || permission.GroupExists(groupName)))
+            if (player != null && (!checkExistence || GroupExists_Helper(groupName, out groupName)))
             {
-                AddTemporaryGroup(GetOrCreatePlayerData(player.Id, player.Name), groupName, expireDate, assignedDate);
+                var playerData = GetOrCreatePlayerData(player.Id, player.Name);
+                if (_config.FileLogs || _config.ConsoleLogs)
+                    SendLog(Log_UserGroups, $"Method call 'AddTemporaryGroup(DateTime)' to grant group '{groupName}' to player '{playerData.DisplayName}' ({playerData.UserID}) as a result of using the API method 'AddUserGroup'.");
+                
+                AddTemporaryGroup(playerData, groupName, expireDate, assignedDate);
                 return true;
             }
             return false;
@@ -1310,7 +1480,7 @@ namespace Oxide.Plugins
                 var tempGroup = playerData.GroupsList.FirstOrDefault(p => p.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
                 if (tempGroup != null)
                 {
-                    tempGroup.AlreadyRemoved = true;
+                    tempGroup.MarkAsRemoved(Log_UserGroups, $"The group '{tempGroup.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation as a result of using the API method 'RemoveUserGroup'.");
                     return true;
                 }
             }
@@ -1337,7 +1507,7 @@ namespace Oxide.Plugins
         private int AddActiveUsersGroup(string groupName, int secondsToAdd, bool fromNow = false)
         {
             int result = 0;
-            if (permission.GroupExists(groupName))
+            if (GroupExists_Helper(groupName, out groupName))
             {
                 foreach (var player in covalence.Players.Connected)
                 {
@@ -1351,7 +1521,7 @@ namespace Oxide.Plugins
         private int AddActiveUsersGroup(string groupName, DateTime expireDate, DateTime assignedDate = default)
         {
             int result = 0;
-            if (permission.GroupExists(groupName))
+            if (GroupExists_Helper(groupName, out groupName))
             {
                 foreach (var player in covalence.Players.Connected)
                 {
@@ -1365,7 +1535,7 @@ namespace Oxide.Plugins
         private int AddAllUsersGroup(string groupName, int secondsToAdd, bool fromNow = false)
         {
             int result = 0;
-            if (permission.GroupExists(groupName))
+            if (GroupExists_Helper(groupName, out groupName))
             {
                 foreach (var player in covalence.Players.All)
                 {
@@ -1379,7 +1549,7 @@ namespace Oxide.Plugins
         private int AddAllUsersGroup(string groupName, DateTime expireDate, DateTime assignedDate = default)
         {
             int result = 0;
-            if (permission.GroupExists(groupName))
+            if (GroupExists_Helper(groupName, out groupName))
             {
                 foreach (var player in covalence.Players.All)
                 {
@@ -1393,7 +1563,7 @@ namespace Oxide.Plugins
         private int RemoveActiveUsersGroup(string groupName)
         {
             int result = 0;
-            if (permission.GroupExists(groupName))
+            if (GroupExists_Helper(groupName, out groupName))
             {
                 foreach (var player in covalence.Players.Connected)
                 {
@@ -1407,7 +1577,7 @@ namespace Oxide.Plugins
         private int RemoveAllUsersGroup(string groupName)
         {
             int result = 0;
-            if (permission.GroupExists(groupName))
+            if (GroupExists_Helper(groupName, out groupName))
             {
                 foreach (var player in covalence.Players.All)
                 {
@@ -1471,12 +1641,16 @@ namespace Oxide.Plugins
         #region ~API - Group's Permissions~
         private bool GrantGroupPermission(string groupName, string permName, int secondsToAdd, bool fromNow = false, bool checkExistence = true)
         {
-            if (!checkExistence || (permission.GroupExists(groupName) && permission.PermissionExists(permName)))
+            if (!checkExistence || (GroupExists_Helper(groupName, out groupName) && PermissionExists_Helper(permName, out permName)))
             {
+                var groupData = GetOrCreateGroupData(groupName);
+                if (_config.FileLogs || _config.ConsoleLogs)
+                    SendLog(Log_GroupPerms, $"Method call 'GrantTemporaryPermission({(secondsToAdd < 1 ? "wipe" : "seconds")})' to grant permission '{permName}' to group '{groupData.GroupName}' as a result of using the API method 'GrantGroupPermission'.");
+                
                 if (secondsToAdd < 1)
-                    GrantTemporaryPermission(GetOrCreateGroupData(groupName), permName);
+                    GrantTemporaryPermission(groupData, permName);
                 else
-                    GrantTemporaryPermission(GetOrCreateGroupData(groupName), permName, secondsToAdd, fromNow);
+                    GrantTemporaryPermission(groupData, permName, secondsToAdd, fromNow);
                 return true;
             }
             return false;
@@ -1484,9 +1658,13 @@ namespace Oxide.Plugins
         
         private bool GrantGroupPermission(string groupName, string permName, DateTime expireDate, DateTime assignedDate = default, bool checkExistence = true)
         {
-            if (!checkExistence || (permission.GroupExists(groupName) && permission.PermissionExists(permName)))
+            if (!checkExistence || (GroupExists_Helper(groupName, out groupName) && PermissionExists_Helper(permName, out permName)))
             {
-                GrantTemporaryPermission(GetOrCreateGroupData(groupName), permName, expireDate, assignedDate);
+                var groupData = GetOrCreateGroupData(groupName);
+                if (_config.FileLogs || _config.ConsoleLogs)
+                    SendLog(Log_GroupPerms, $"Method call 'GrantTemporaryPermission(DateTime)' to grant permission '{permName}' to group '{groupData.GroupName}' as a result of using the API method 'GrantGroupPermission'.");
+                
+                GrantTemporaryPermission(groupData, permName, expireDate, assignedDate);
                 return true;
             }
             return false;
@@ -1494,12 +1672,12 @@ namespace Oxide.Plugins
         
         private bool RevokeGroupPermission(string groupName, string permName, bool checkExistence = true)
         {
-            if ((!checkExistence || permission.GroupExists(groupName)) && _storedData.GroupsList.TryGetValue(groupName, out var groupData))
+            if ((!checkExistence || GroupExists_Helper(groupName, out groupName)) && _storedData.GroupsList.TryGetValue(groupName, out var groupData))
             {
                 var tempPermission = groupData.PermissionsList.FirstOrDefault(p => p.Name.Equals(permName, StringComparison.OrdinalIgnoreCase));
                 if (tempPermission != null)
                 {
-                    tempPermission.AlreadyRemoved = true;
+                    tempPermission.MarkAsRemoved(Log_GroupPerms, $"The permission '{tempPermission.Name}' of group '{groupData.GroupName}' has been marked for revocation as a result of using the API method 'RevokeGroupPermission'.");
                     return true;
                 }
             }
@@ -1508,7 +1686,7 @@ namespace Oxide.Plugins
         
         private bool GroupHasPermission(string groupName, string permName)
         {
-            if (permission.GroupExists(groupName) && _storedData.GroupsList.TryGetValue(groupName, out var groupData))
+            if (GroupExists_Helper(groupName, out groupName) && _storedData.GroupsList.TryGetValue(groupName, out var groupData))
             {
                 var tempPermission = groupData.PermissionsList.FirstOrDefault(p => p.Name.Equals(permName, StringComparison.OrdinalIgnoreCase));
                 if (tempPermission != null && !tempPermission.AlreadyRemoved)
@@ -1524,7 +1702,7 @@ namespace Oxide.Plugins
         private int GrantAllGroupsPermission(string permName, int secondsToAdd, bool fromNow = false)
         {
             int result = 0;
-            if (permission.PermissionExists(permName))
+            if (PermissionExists_Helper(permName, out permName))
             {
                 var groups = permission.GetGroups();
                 for (int i = 0; i < groups.Length; i++)
@@ -1539,7 +1717,7 @@ namespace Oxide.Plugins
         private int GrantAllGroupsPermission(string permName, DateTime expireDate, DateTime assignedDate = default)
         {
             int result = 0;
-            if (permission.PermissionExists(permName))
+            if (PermissionExists_Helper(permName, out permName))
             {
                 var groups = permission.GetGroups();
                 for (int i = 0; i < groups.Length; i++)
@@ -1554,7 +1732,7 @@ namespace Oxide.Plugins
         private int RevokeAllGroupsPermission(string permName)
         {
             int result = 0;
-            if (permission.PermissionExists(permName))
+            if (PermissionExists_Helper(permName, out permName))
             {
                 var groups = permission.GetGroups();
                 for (int i = 0; i < groups.Length; i++)
@@ -1603,13 +1781,13 @@ namespace Oxide.Plugins
         #endregion
 
         #region ~Oxide Hooks~
-        void OnUserPermissionRevoked(string userID, string perm)
+        void OnUserPermissionRevoked(string userID, string permName)
         {
             if (_storedData.PlayersList.TryGetValue(userID, out var playerData))
             {
-                var tempPermission = playerData.PermissionsList.FirstOrDefault(p => p.Name.Equals(perm, StringComparison.OrdinalIgnoreCase));
+                var tempPermission = playerData.PermissionsList.FirstOrDefault(p => p.Name.Equals(permName, StringComparison.OrdinalIgnoreCase));
                 if (tempPermission != null)
-                    tempPermission.AlreadyRemoved = true;
+                    tempPermission.MarkAsRemoved(Log_UserPerms, $"The permission '{tempPermission.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation as a result of calling hook 'OnUserPermissionRevoked'.");
             }
         }
         
@@ -1617,29 +1795,75 @@ namespace Oxide.Plugins
         {
             if (_storedData.PlayersList.TryGetValue(userID, out var playerData))
             {
-                var tempPermission = playerData.GroupsList.FirstOrDefault(p => p.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
-                if (tempPermission != null)
-                    tempPermission.AlreadyRemoved = true;
+                var tempGroup = playerData.GroupsList.FirstOrDefault(p => p.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
+                if (tempGroup != null)
+                    tempGroup.MarkAsRemoved(Log_UserGroups, $"The group '{tempGroup.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation as a result of calling hook 'OnUserGroupRemoved'.");
             }
         }
         
-        void OnGroupPermissionRevoked(string groupName, string perm)
+        void OnGroupPermissionRevoked(string groupName, string permName)
         {
             if (_storedData.GroupsList.TryGetValue(groupName, out var groupData))
             {
-                var tempPermission = groupData.PermissionsList.FirstOrDefault(p => p.Name.Equals(perm, StringComparison.OrdinalIgnoreCase));
+                var tempPermission = groupData.PermissionsList.FirstOrDefault(p => p.Name.Equals(permName, StringComparison.OrdinalIgnoreCase));
                 if (tempPermission != null)
-                    tempPermission.AlreadyRemoved = true;
+                    tempPermission.MarkAsRemoved(Log_GroupPerms, $"The permission '{tempPermission.Name}' of group '{groupData.GroupName}' has been marked for revocation as a result of calling hook 'OnGroupPermissionRevoked'.");
+            }
+        }
+        
+        void OnPermissionRegistered(string permName)
+        {
+            if (!PermissionExists_Helper(permName, out var existingPerm))
+                _existingPerms.Add(permName);
+            else if (!string.Equals(existingPerm, permName, StringComparison.Ordinal))
+            {
+                _existingPerms.Remove(existingPerm);
+                _existingPerms.Add(permName);
+            }
+        }
+
+        void OnGroupCreated(string groupName)
+        {
+            if (!GroupExists_Helper(groupName, out var existingGroup))
+                _existingGroups.Add(groupName);
+            else if (!string.Equals(existingGroup, groupName, StringComparison.Ordinal))
+            {
+                _existingGroups.Remove(existingGroup);
+                _existingGroups.Add(groupName);
             }
         }
         
         void OnGroupDeleted(string groupName)
         {
+            TemporaryPermission tempPermission, tempGroup;
+            foreach (var playerData in _storedData.PlayersList.Values)
+            {
+                for (int i = 0; i < playerData.GroupsList.Count; i++)
+                {
+                    tempGroup = playerData.GroupsList[i];
+                    if (tempGroup.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        tempGroup.MarkAsRemoved(Log_UserGroups, $"The group '{tempGroup.Name}' of player '{playerData.DisplayName}' ({playerData.UserID}) has been marked for revocation as a result of the group being deleted.");
+                        break;
+                    }
+                }
+            }
+            
             if (_storedData.GroupsList.TryGetValue(groupName, out var groupData))
             {
                 for (int i = 0; i < groupData.PermissionsList.Count; i++)
-                    groupData.PermissionsList[i].AlreadyRemoved = true;
+                {
+                    tempPermission = groupData.PermissionsList[i];
+                    tempPermission.MarkAsRemoved(Log_UserGroups, $"The permission '{tempPermission.Name}' of group '{groupData.GroupName}' has been marked for revocation as a result of the group being deleted.");
+                }
             }
+            _existingGroups.Remove(groupName);
+        }
+        
+        void OnUserNameUpdated(string userID, string oldName, string newName)
+        {
+            if (_storedData.PlayersList.TryGetValue(userID, out var playerData))
+                playerData.DisplayName = newName;
         }
         
         void Init()
@@ -1648,12 +1872,19 @@ namespace Oxide.Plugins
             Unsubscribe(nameof(OnUserPermissionRevoked));
             Unsubscribe(nameof(OnUserGroupRemoved));
             Unsubscribe(nameof(OnGroupPermissionRevoked));
+            Unsubscribe(nameof(OnPermissionRegistered));
+            Unsubscribe(nameof(OnGroupCreated));
             Unsubscribe(nameof(OnGroupDeleted));
+            Unsubscribe(nameof(OnUserNameUpdated));
             Unsubscribe(nameof(OnServerSave));
+            Instance = this;
             permission.RegisterPermission(PERMISSION_ADMIN, this);
             AddCovalenceCommand(_config.AdminCommand, nameof(Command_Admin));
             AddCovalenceCommand(_config.Command, nameof(Command_TemporaryPermissions));
-            _storedData = Interface.Oxide.DataFileSystem.ReadObject<StoredData>(Name);
+            try { _storedData = Interface.Oxide.DataFileSystem.ReadObject<StoredData>(Name); }
+            catch (Exception ex) { UnityEngine.Debug.LogException(ex); }
+            if (_storedData == null)
+                _storedData = new StoredData();
         }
         
         void OnServerInitialized(bool initial)
@@ -1690,7 +1921,7 @@ namespace Oxide.Plugins
                 {
                     tempPermission = playerData.PermissionsList[i];
                     if (tempPermission != null && !tempPermission.AlreadyRemoved)
-                        perms.Add(string.Format(lang.GetMessage("CmdCheckFormatPermissions", this, player.Id), tempPermission.Name, tempPermission.ExpireDate, tempPermission.AssignedDate));
+                        perms.Add(string.Format(lang.GetMessage("CmdCheckFormatPermissions", this, player.Id), tempPermission.Name, tempPermission.UntilWipe ? lang.GetMessage("CmdUntilWipe", this, player.Id) : tempPermission.ExpireDate, tempPermission.AssignedDate));
                 }
                 totalPerms = perms.Count;
                 if (totalPerms > 0)
@@ -1701,7 +1932,7 @@ namespace Oxide.Plugins
                 {
                     tempGroup = playerData.GroupsList[i];
                     if (tempGroup != null && !tempGroup.AlreadyRemoved)
-                        groups.Add(string.Format(lang.GetMessage("CmdCheckFormatGroups", this, player.Id), tempGroup.Name, tempGroup.ExpireDate, tempGroup.AssignedDate));
+                        groups.Add(string.Format(lang.GetMessage("CmdCheckFormatGroups", this, player.Id), tempGroup.Name, tempGroup.UntilWipe ? lang.GetMessage("CmdUntilWipe", this, player.Id) : tempGroup.ExpireDate, tempGroup.AssignedDate));
                 }
                 totalGroups = groups.Count;
                 if (totalGroups > 0)
@@ -1714,7 +1945,7 @@ namespace Oxide.Plugins
         #endregion
         
         #region ~Commands - Admin~
-        private readonly string[] _cmdKeysAdmin = { "grant", "revoke", "add", "remove" }, _cmdKeysAdminSub = { "user", "group" };
+        private readonly string[] _cmdKeysAdmin = { "grant", "revoke", "add", "remove", "wipe" }, _cmdKeysAdminSub = { "user", "group" };
         private void Command_Admin(IPlayer player, string command, string[] args)
         {
             if (!player.IsAdmin && !permission.UserHasPermission(player.Id, PERMISSION_ADMIN)) return;
@@ -1725,6 +1956,7 @@ namespace Oxide.Plugins
                 return;
             }
             
+            string groupName = string.Empty;
             IPlayer targetPlayer = null;
             args = args.Length >= 6 ? args : args.Concat(Enumerable.Repeat(string.Empty, 6 - args.Length)).ToArray();
             if (index == 0 || index == 1)
@@ -1736,12 +1968,12 @@ namespace Oxide.Plugins
                     player.Reply(lang.GetMessage("CmdAdmin", this, player.Id));
                     return;
                 }
-                
-                if (!permission.PermissionExists(args[3]))
+
+                if (!PermissionExists_Helper(args[3], out var permName))
                     SendMessage(player, string.Format(lang.GetMessage("CmdPermissionNotFound", this, player.Id), args[3]));
                 else if (subIndex == 0 && !TryGetPlayer(player, args[2], out targetPlayer, false))
                     return;
-                else if (subIndex == 1 && !GroupExists_Helper(args[2]))
+                else if (subIndex == 1 && !GroupExists_Helper(args[2], out groupName))
                     SendMessage(player, string.Format(lang.GetMessage("CmdGroupNotFound", this, player.Id), args[2]));
                 else if (index == 0)
                 {
@@ -1752,35 +1984,59 @@ namespace Oxide.Plugins
                         //tperm grant user iiiaka realpve.vip wipe/seconds/DATETIME (true/false)/DATETIME
                         var targetData = GetOrCreatePlayerData(targetPlayer.Id, targetPlayer.Name);
                         if (args[4].Equals(Str_Wipe, StringComparison.OrdinalIgnoreCase))
-                            GrantTemporaryPermission(targetData, args[3]);
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_UserPerms, $"Method call 'GrantTemporaryPermission(wipe)' to grant permission '{permName}' to player '{targetData.DisplayName}' ({targetData.UserID}) as a result of using the internal grant command by player '{player.Name}'.");
+                            GrantTemporaryPermission(targetData, permName);
+                        }
                         else if (int.TryParse(args[4], out var secondsToAdd))
-                            GrantTemporaryPermission(targetData, args[3], secondsToAdd, bool.TryParse(args[5], out var fromNow) ? fromNow : false);
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_UserPerms, $"Method call 'GrantTemporaryPermission(seconds)' to grant permission '{permName}' to player '{targetData.DisplayName}' ({targetData.UserID}) as a result of using the internal grant command by player '{player.Name}'.");
+                            GrantTemporaryPermission(targetData, permName, secondsToAdd, bool.TryParse(args[5], out var fromNow) ? fromNow : false);
+                        }
                         else if (DateTime.TryParse(args[4], out var expireDate))
-                            GrantTemporaryPermission(targetData, args[3], expireDate, DateTime.TryParse(args[5], out var assignedDate) ? assignedDate : default);
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_UserPerms, $"Method call 'GrantTemporaryPermission(DateTime)' to grant permission '{permName}' to player '{targetData.DisplayName}' ({targetData.UserID}) as a result of using the internal grant command by player '{player.Name}'.");
+                            GrantTemporaryPermission(targetData, permName, expireDate, DateTime.TryParse(args[5], out var assignedDate) ? assignedDate : default);
+                        }
                         else
                         {
                             SendMessage(player, lang.GetMessage("CmdGrantWrongFormat", this, player.Id));
                             return;
                         }
-                        SendMessage(player, string.Format(lang.GetMessage("CmdUserGranted", this, player.Id), args[3], targetPlayer.Name), false);
+                        SendMessage(player, string.Format(lang.GetMessage("CmdUserGranted", this, player.Id), permName, targetPlayer.Name), false);
                     }
                     else if (subIndex == 1)
                     {
                         //        0     1    2       3                4                     5 - optional
                         //tperm grant group vip realpve.vip wipe/seconds/DATETIME (true/false)/DATETIME
-                        var groupData = GetOrCreateGroupData(args[2]);
+                        var groupData = GetOrCreateGroupData(groupName);
                         if (args[4].Equals(Str_Wipe, StringComparison.OrdinalIgnoreCase))
-                            GrantTemporaryPermission(groupData, args[3]);
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_GroupPerms, $"Method call 'GrantTemporaryPermission(wipe)' to grant permission '{permName}' to group '{groupData.GroupName}' as a result of using the internal grant command by player '{player.Name}'.");
+                            GrantTemporaryPermission(groupData, permName);
+                        }
                         else if (int.TryParse(args[4], out var secondsToAdd))
-                            GrantTemporaryPermission(groupData, args[3], secondsToAdd, bool.TryParse(args[5], out var fromNow) ? fromNow : false);
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_GroupPerms, $"Method call 'GrantTemporaryPermission(seconds)' to grant permission '{permName}' to group '{groupData.GroupName}' as a result of using the internal grant command by player '{player.Name}'.");
+                            GrantTemporaryPermission(groupData, permName, secondsToAdd, bool.TryParse(args[5], out var fromNow) ? fromNow : false);
+                        }
                         else if (DateTime.TryParse(args[4], out var expireDate))
-                            GrantTemporaryPermission(groupData, args[3], expireDate, DateTime.TryParse(args[5], out var assignedDate) ? assignedDate : default);
+                        {
+                            if (_config.FileLogs || _config.ConsoleLogs)
+                                SendLog(Log_GroupPerms, $"Method call 'GrantTemporaryPermission(DateTime)' to grant permission '{permName}' to group '{groupData.GroupName}' as a result of using the internal grant command by player '{player.Name}'.");
+                            GrantTemporaryPermission(groupData, permName, expireDate, DateTime.TryParse(args[5], out var assignedDate) ? assignedDate : default);
+                        }
                         else
                         {
                             SendMessage(player, lang.GetMessage("CmdGrantWrongFormat", this, player.Id));
                             return;
                         }
-                        SendMessage(player, string.Format(lang.GetMessage("CmdGroupGranted", this, player.Id), args[3], groupData.GroupName), false);
+                        SendMessage(player, string.Format(lang.GetMessage("CmdGroupGranted", this, player.Id), permName, groupData.GroupName), false);
                     }
                     else
                         SendMessage(player, lang.GetMessage("CmdGrantWrongFormat", this, player.Id));
@@ -1792,27 +2048,27 @@ namespace Oxide.Plugins
                     {
                         //         0     1     2        3
                         //tperm revoke user iiiaka realpve.vip
-                        permission.RevokeUserPermission(targetPlayer.Id, args[3]);
+                        permission.RevokeUserPermission(targetPlayer.Id, permName);
                         if (_storedData.PlayersList.TryGetValue(targetPlayer.Id, out var targetData))
                         {
-                            var tempPermission = targetData.PermissionsList.FirstOrDefault(p => p.Name.Equals(args[3], StringComparison.OrdinalIgnoreCase));
+                            var tempPermission = targetData.PermissionsList.FirstOrDefault(p => p.Name.Equals(permName, StringComparison.OrdinalIgnoreCase));
                             if (tempPermission != null)
-                                tempPermission.AlreadyRemoved = true;
+                                tempPermission.MarkAsRemoved(Log_UserPerms, $"The permission '{tempPermission.Name}' of player '{targetData.DisplayName}' ({targetData.UserID}) has been marked for revocation as a result of using the internal revoke command by player '{player.Name}'.");
                         }
-                        SendMessage(player, string.Format(lang.GetMessage("CmdUserRevoked", this, player.Id), args[3], targetPlayer.Name), false);
+                        SendMessage(player, string.Format(lang.GetMessage("CmdUserRevoked", this, player.Id), permName, targetPlayer.Name), false);
                     }
                     else if (subIndex == 1)
                     {
                         //         0     1    2       3
                         //tperm revoke group vip realpve.vip
-                        permission.RevokeGroupPermission(args[2], args[3]);
-                        if (_storedData.GroupsList.TryGetValue(args[2], out var groupData))
+                        permission.RevokeGroupPermission(groupName, permName);
+                        if (_storedData.GroupsList.TryGetValue(groupName, out var groupData))
                         {
-                            var tempPermission = groupData.PermissionsList.FirstOrDefault(p => p.Name.Equals(args[3], StringComparison.OrdinalIgnoreCase));
+                            var tempPermission = groupData.PermissionsList.FirstOrDefault(p => p.Name.Equals(permName, StringComparison.OrdinalIgnoreCase));
                             if (tempPermission != null)
-                                tempPermission.AlreadyRemoved = true;
+                                tempPermission.MarkAsRemoved(Log_GroupPerms, $"The permission '{tempPermission.Name}' of group '{groupData.GroupName}' has been marked for revocation as a result of using the internal revoke command by player '{player.Name}'.");
                         }
-                        SendMessage(player, string.Format(lang.GetMessage("CmdGroupRevoked", this, player.Id), args[3], args[2]), false);
+                        SendMessage(player, string.Format(lang.GetMessage("CmdGroupRevoked", this, player.Id), permName, groupName), false);
                     }
                     else
                         SendMessage(player, lang.GetMessage("CmdRevokeWrongFormat", this, player.Id));
@@ -1826,8 +2082,8 @@ namespace Oxide.Plugins
                     player.Reply(lang.GetMessage("CmdAdmin", this, player.Id));
                     return;
                 }
-                
-                if (!GroupExists_Helper(args[2]))
+
+                if (!GroupExists_Helper(args[2], out groupName))
                     SendMessage(player, string.Format(lang.GetMessage("CmdGroupNotFound", this, player.Id), args[2]));
                 else if (!TryGetPlayer(player, args[1], out targetPlayer, false))
                     return;
@@ -1837,31 +2093,63 @@ namespace Oxide.Plugins
                     //tperm add iiiaka vip wipe/seconds/DATETIME (true/false)/DATETIME
                     var targetData = GetOrCreatePlayerData(targetPlayer.Id, targetPlayer.Name);
                     if (args[3].Equals(Str_Wipe, StringComparison.OrdinalIgnoreCase))
-                        AddTemporaryGroup(targetData, args[2]);
+                    {
+                        if (_config.FileLogs || _config.ConsoleLogs)
+                            SendLog(Log_UserGroups, $"Method call 'AddTemporaryGroup(wipe)' to grant group '{groupName}' to player '{targetData.DisplayName}' ({targetData.UserID}) as a result of using the internal add command by player '{player.Name}'.");
+                        AddTemporaryGroup(targetData, groupName);
+                    }
                     else if (int.TryParse(args[3], out var secondsToAdd))
-                        AddTemporaryGroup(targetData, args[2], secondsToAdd, bool.TryParse(args[4], out var fromNow) ? fromNow : false);
+                    {
+                        if (_config.FileLogs || _config.ConsoleLogs)
+                            SendLog(Log_UserGroups, $"Method call 'AddTemporaryGroup(seconds)' to grant group '{groupName}' to player '{targetData.DisplayName}' ({targetData.UserID}) as a result of using the internal add command by player '{player.Name}'.");
+                        AddTemporaryGroup(targetData, groupName, secondsToAdd, bool.TryParse(args[4], out var fromNow) ? fromNow : false);
+                    }
                     else if (DateTime.TryParse(args[3], out var expireDate))
-                        AddTemporaryGroup(targetData, args[2], expireDate, DateTime.TryParse(args[4], out var assignedDate) ? assignedDate : default);
+                    {
+                        if (_config.FileLogs || _config.ConsoleLogs)
+                            SendLog(Log_UserGroups, $"Method call 'AddTemporaryGroup(DateTime)' to grant group '{groupName}' to player '{targetData.DisplayName}' ({targetData.UserID}) as a result of using the internal add command by player '{player.Name}'.");
+                        AddTemporaryGroup(targetData, groupName, expireDate, DateTime.TryParse(args[4], out var assignedDate) ? assignedDate : default);
+                    }
                     else
                     {
                         SendMessage(player, lang.GetMessage("CmdUserGroupWrongFormat", this, player.Id));
                         return;
                     }
-                    SendMessage(player, string.Format(lang.GetMessage("CmdUserGroupAdded", this, player.Id), targetPlayer.Name, args[2]), false);
+                    SendMessage(player, string.Format(lang.GetMessage("CmdUserGroupAdded", this, player.Id), targetPlayer.Name, groupName), false);
                 }
                 else if (index == 3)
                 {
                     //        0       1    2
                     //tperm remove iiiaka vip
-                    permission.RemoveUserGroup(targetPlayer.Id, args[2]);
+                    permission.RemoveUserGroup(targetPlayer.Id, groupName);
                     if (_storedData.PlayersList.TryGetValue(targetPlayer.Id, out var targetData))
                     {
-                        var tempPermission = targetData.GroupsList.FirstOrDefault(p => p.Name.Equals(args[2], StringComparison.OrdinalIgnoreCase));
-                        if (tempPermission != null)
-                            tempPermission.AlreadyRemoved = true;
+                        var tempGroup = targetData.GroupsList.FirstOrDefault(p => p.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
+                        if (tempGroup != null)
+                            tempGroup.MarkAsRemoved(Log_UserGroups, $"The group '{tempGroup.Name}' of player '{targetData.DisplayName}' ({targetData.UserID}) has been marked for revocation as a result of using the internal remove command by player '{player.Name}'.");
                     }
-                    SendMessage(player, string.Format(lang.GetMessage("CmdUserGroupRemoved", this, player.Id), targetPlayer.Name, args[2]), false);
+                    SendMessage(player, string.Format(lang.GetMessage("CmdUserGroupRemoved", this, player.Id), targetPlayer.Name, groupName), false);
                 }
+            }
+            else if (index == 4)
+            {
+                //        0        1
+                //tperm wipe reset/DATETIME
+                var utcNow = DateTime.UtcNow;
+                if (args[1].Equals("reset"))
+                {
+                    _config.CustomWipe = string.Empty;
+                    SaveConfig();
+                    SendMessage(player, lang.GetMessage("CmdWipeReset", this, player.Id), false);
+                }
+                else if (DateTime.TryParse(args[1], out var wipeDate) && wipeDate > utcNow)
+                {
+                    _config.CustomWipe = wipeDate.ToString(TimeFormat);
+                    SaveConfig();
+                    SendMessage(player, string.Format(lang.GetMessage("CmdWipeNew", this, player.Id), _config.CustomWipe), false);
+                }
+                else
+                    SendMessage(player, string.Format(lang.GetMessage("CmdWipeFailed", this, player.Id), args[1], utcNow.AddDays(1).ToString(TimeFormat)));
             }
         }
         #endregion
@@ -1878,18 +2166,19 @@ namespace Oxide.Plugins
             {
                 foreach (var playerData in _storedData.PlayersList.Values)
                 {
-                    foreach (var tempPerm in playerData.PermissionsList)
-                        permission.RevokeUserPermission(playerData.UserID, tempPerm.Name);
-                    foreach (var tempGroup in playerData.GroupsList)
-                        permission.RemoveUserGroup(playerData.UserID, tempGroup.Name);
+                    for (int i = 0; i < playerData.PermissionsList.Count; i++)
+                        permission.RevokeUserPermission(playerData.UserID, playerData.PermissionsList[i].Name);
+                    for (int i = 0; i < playerData.GroupsList.Count; i++)
+                        permission.RemoveUserGroup(playerData.UserID, playerData.GroupsList[i].Name);
                 }
                 foreach (var groupData in _storedData.GroupsList.Values)
                 {
-                    foreach (var tempPerm in groupData.PermissionsList)
-                        permission.RevokeGroupPermission(groupData.GroupName, tempPerm.Name);
+                    for (int i = 0; i < groupData.PermissionsList.Count; i++)
+                        permission.RevokeGroupPermission(groupData.GroupName, groupData.PermissionsList[i].Name);
                 }
             }
             OnServerSave();
+            Instance = null;
             _storedData = null;
             _config = null;
         }
@@ -1962,6 +2251,21 @@ namespace Oxide.Plugins
                 Name = name;
                 AssignedDate = assignedDate == default ? utcNow : assignedDate;
                 ExpireDate = utcNow.AddSeconds(secondsToAdd);
+            }
+            
+            public void UpdateName(string newName)
+            {
+                if (string.IsNullOrWhiteSpace(newName))
+                    Name = newName;
+            }
+            
+            public void MarkAsRemoved(string filename, string logMsg)
+            {
+                if (!AlreadyRemoved)
+                {
+                    AlreadyRemoved = true;
+                    Instance.SendLog(filename, logMsg);
+                }
             }
             
             public override int GetHashCode() => Name.GetHashCode();
