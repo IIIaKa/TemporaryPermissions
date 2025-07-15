@@ -43,7 +43,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("Temporary Permissions", "IIIaKa", "0.1.5")]
+    [Info("Temporary Permissions", "IIIaKa", "0.1.6")]
     [Description("Useful plugin for managing temporary permissions, temporary groups and temporary permissions for groups. This is done through chat commands, built-in Oxide commands and API methods.")]
     class TemporaryPermissions : RustPlugin
     {
@@ -466,7 +466,7 @@ namespace Oxide.Plugins
             {
                 if (_storedData.GroupsList.TryGetValue(groupNames[i], out var groupData))
                 {
-                    for (int j = 0; j < groupData.PermissionsList.Count; i++)
+                    for (int j = 0; j < groupData.PermissionsList.Count; j++)
                         permission.GrantGroupPermission(groupData.GroupName, groupData.PermissionsList[j].Name, null);
                 }
             }

@@ -57,7 +57,7 @@ Useful plugin for managing **temporary permissions**, **temporary groups** and *
   "Version": {
     "Major": 0,
     "Minor": 1,
-    "Patch": 5
+    "Patch": 6
   }
 }
 ```  
