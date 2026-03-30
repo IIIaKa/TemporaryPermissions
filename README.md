@@ -42,11 +42,11 @@ Useful plugin for managing **temporary permissions**, **temporary groups** and *
   "Chat command": "myperm",
   "Chat admin command": "tperm",
   "Is it worth enabling GameTips for messages?": true,
-  "Is it worth saving logs to a file?": true,
-  "Is it worth using console logging?": true,
   "List of language keys for creating language files": [
     "en"
   ],
+  "Is it worth saving logs to a file?": true,
+  "Is it worth using console logging?": true,
   "Interval in seconds for expiration check": 1.0,
   "Interval in seconds for checking the presence of temporary permissions and temporary groups. A value of 0 disables the check": 600.0,
   "Is it worth restoring removed temporary permissions and temporary groups if the timer hasn't expired? There are cases where removal cannot be tracked in the usual way": true,
@@ -57,7 +57,7 @@ Useful plugin for managing **temporary permissions**, **temporary groups** and *
   "Version": {
     "Major": 0,
     "Minor": 1,
-    "Patch": 7
+    "Patch": 8
   }
 }
 ```  
@@ -291,7 +291,7 @@ void OnGroupTemporaryPermissionRevoked(string groupName, string perm, bool isExp
 private Plugin TemporaryPermissions;
 ```
 
-There are 30 methods:
+There are 40 methods:
 - **IsReady**
 - _User's Permissions:_
   - **GrantUserPermission**
@@ -302,10 +302,15 @@ There are 30 methods:
   - **RevokeActiveUsersPermission**
   - **RevokeAllUsersPermission**
   - **UserGetAllPermissions**
+  - **UserGetAllPermissionsNoAlloc**
   - **UserGetPermissionByExpiry**
+  - **UserGetPermissionByExpiryNoAlloc**
   - **UserGetAllPermissionsByExpiry**
+  - **UserGetAllPermissionsByExpiryNoAlloc**
   - **ActiveUsersGetAllPermissions**
+  - **ActiveUsersGetAllPermissionsNoAlloc**
   - **AllUsersGetAllPermissions**
+  - **AllUsersGetAllPermissionsNoAlloc**
 - _User's Groups:_
   - **AddUserGroup**
   - **RemoveUserGroup**
@@ -315,8 +320,11 @@ There are 30 methods:
   - **RemoveActiveUsersGroup**
   - **RemoveAllUsersGroup**
   - **UserGetAllGroups**
+  - **UserGetAllGroupsNoAlloc**
   - **ActiveUsersGetAllGroups**
+  - **ActiveUsersGetAllGroupsNoAlloc**
   - **AllUsersGetAllGroups**
+  - **AllUsersGetAllGroupsNoAlloc**
 - _Group's Permissions:_
   - **GrantGroupPermission**
   - **RevokeGroupPermission**
@@ -324,7 +332,9 @@ There are 30 methods:
   - **GrantAllGroupsPermission**
   - **RevokeAllGroupsPermission**
   - **GroupGetAllPermissions**
+  - **GroupGetAllPermissionsNoAlloc**
   - **AllGroupsGetAllPermissions**
+  - **AllGroupsGetAllPermissionsNoAlloc**
 
 ### IsReady
 Used to check if the **TemporaryPermissions** plugin is **loaded** and **ready** to work.  
@@ -338,11 +348,11 @@ The **IsReady** method returns **true if it is ready**, or **null if it is not**
 Used to **grant a temporary permission** to a **player**.  
 Returns **true if the grant was successful**.  
 To call the **GrantUserPermission** method, you need to pass 5 parameters, 3 of which are optional:
-1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
-2. <string>**permName** - **The name of the permission**;
-3. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
-4. <bool>**fromNow** or <DateTime>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date;
-5. <bool>**checkExistence** - **Optional**. Whether to check for the existence of the permission.
+1. **IPlayer** or **BasePlayer** or \<string\>**playerID** - **The player object** or their **Id**;
+2. \<string\>**permName** - **The name of the permission**;
+3. \<int\>**secondsToAdd** or \<DateTime\>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
+4. \<bool\>**fromNow** or \<DateTime\>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date;
+5. \<bool\>**checkExistence** - **Optional**. Whether to check for the existence of the permission.
 
  ```csharp
 (bool)TemporaryPermissions?.Call("GrantUserPermission", player.UserIDString, "realpve.vip");//Calling the GrantUserPermission method without specifying the third parameter, to grant temporary permission until the wipe.
@@ -355,8 +365,8 @@ To call the **GrantUserPermission** method, you need to pass 5 parameters, 3 of 
 Used to **revoke a temporary permission** from a **player**.  
 Returns **true** if the **revoke was successful**.  
 To call the **RevokeUserPermission** method, you need to pass 2 parameters:
-1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
-2. <string>**permName** - **The name of the permission**.
+1. **IPlayer** or **BasePlayer** or \<string\>**playerID** - **The player object** or their **Id**;
+2. \<string\>**permName** - **The name of the permission**.
 
 ```csharp
 (bool)TemporaryPermissions?.Call("RevokeUserPermission", player.UserIDString, "realpve.vip");
@@ -366,8 +376,8 @@ To call the **RevokeUserPermission** method, you need to pass 2 parameters:
 Used to **check** if a **player has a temporary permission**.  
 Returns **true** if the **player has the specified temporary permission**.  
 To call the **UserHasPermission** method, you need to pass 2 parameters:
-1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
-2. <string>**permName** - **The name of the permission**.
+1. **IPlayer** or **BasePlayer** or \<string\>**playerID** - **The player object** or their **Id**;
+2. \<string\>**permName** - **The name of the permission**.
 
 ```csharp
 (bool)TemporaryPermissions?.Call("UserHasPermission", player.UserIDString, "realpve.vip");
@@ -375,11 +385,11 @@ To call the **UserHasPermission** method, you need to pass 2 parameters:
 
 ### GrantActiveUsersPermission
 Used to **temporarily grant a permission** to **all online players**.  
-Returns the <int>**number of successful grants of temporary permissions to players**.  
+Returns the \<int\>**number of successful grants of temporary permissions to players**.  
 To call the **GrantActiveUsersPermission** method, you need to pass 3 parameters, 2 of which is optional:
-1. <string>**permName** - **The name of the permission**;
-2. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
-3. <bool>**fromNow** or <DateTime>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date.
+1. \<string\>**permName** - **The name of the permission**;
+2. \<int\>**secondsToAdd** or \<DateTime\>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
+3. \<bool\>**fromNow** or \<DateTime\>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date.
 
 ```csharp
 (int)TemporaryPermissions?.Call("GrantActiveUsersPermission", "realpve.vip");//Calling the GrantActiveUsersPermission method without specifying the second parameter, to grant all online players temporary permission until the wipe.
@@ -390,11 +400,11 @@ To call the **GrantActiveUsersPermission** method, you need to pass 3 parameters
 
 ### GrantAllUsersPermission
 Used to **grant a temporary permission** to **all players**.  
-Returns the <int>**number of successful grants of temporary permissions to players**.  
+Returns the \<int\>**number of successful grants of temporary permissions to players**.  
 To call the **GrantAllUsersPermission** method, you need to pass 3 parameters, 2 of which is optional:
-1. <string>**permName** - **The name of the permission**;
-2. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
-3. <bool>**fromNow** or <DateTime>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date.
+1. \<string\>**permName** - **The name of the permission**;
+2. \<int\>**secondsToAdd** or \<DateTime\>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
+3. \<bool\>**fromNow** or \<DateTime\>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date.
 
 ```csharp
 (int)TemporaryPermissions?.Call("GrantAllUsersPermission", "realpve.vip");//Calling the GrantAllUsersPermission method without specifying the second parameter, to grant all players temporary permission until the wipe.
@@ -405,9 +415,9 @@ To call the **GrantAllUsersPermission** method, you need to pass 3 parameters, 2
 
 ### RevokeActiveUsersPermission
 Used to **revoke a temporary permission** from **all online players**.  
-Returns the <int>**number of successful revokes of temporary permissions to players**.  
+Returns the \<int\>**number of successful revokes of temporary permissions to players**.  
 To call the **RevokeActiveUsersPermission** method, you need to pass 1 parameter:
-1. <string>**permName** - **The name of the permission**.
+1. \<string\>**permName** - **The name of the permission**.
 
 ```csharp
 (int)TemporaryPermissions?.Call("RevokeActiveUsersPermission", "realpve.vip");
@@ -415,9 +425,9 @@ To call the **RevokeActiveUsersPermission** method, you need to pass 1 parameter
 
 ### RevokeAllUsersPermission
 Used to **revoke a temporary permission** from **all players**.  
-Returns the <int>**number of successful revokes of temporary permissions to players**.  
+Returns the \<int\>**number of successful revokes of temporary permissions to players**.  
 To call the **RevokeAllUsersPermission** method, you need to pass 1 parameter:
-1. <string>**permName** - **The name of the permission**.
+1. \<string\>**permName** - **The name of the permission**.
 
 ```csharp
 (int)TemporaryPermissions?.Call("RevokeAllUsersPermission", "realpve.vip");
@@ -428,10 +438,22 @@ Used to **retrieve all temporary permissions** of a **player**.
 Returns a **Dictionary<string, DateTime[]>** where the **key is the permission name** and **the value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.  
 If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.  
 To call the **UserGetAllPermissions** method, you need to pass 1 parameter:
-1. <string>**playerID** - The player's **Id**.
+1. \<string\>**playerID** - The player's **Id**.
 
 ```csharp
 (Dictionary<string, DateTime[]>)TemporaryPermissions?.Call("UserGetAllPermissions", player.UserIDString);
+```  
+
+### UserGetAllPermissionsNoAlloc
+Analogous to **UserGetAllPermissions**, but in this case the dictionary(**Dictionary<string, DateTime[]>**) you provided is populated.  
+Returns **true** if at least one entry is added, otherwise **null**.  
+To call the **UserGetAllPermissionsNoAlloc** method, you need to pass 2 parameters:
+1. \<string\>**playerID** - The player's **Id**;
+2. Dictionary<string, DateTime[]>**dict** - Your dictionary to populate.
+
+```csharp
+var dict = new Dictionary<string, DateTime[]>();
+(bool)(TemporaryPermissions?.Call("UserGetAllPermissionsNoAlloc", player.UserIDString, dict) ?? false);
 ```  
 
 ### UserGetPermissionByExpiry  
@@ -439,11 +461,24 @@ Used to get **the expiration date** of a player's temporary permission, consider
 Returns a **DateTime[]**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.  
 If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.  
 To call the **UserGetPermissionByExpiry** method, you need to pass 2 parameters:
-1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
-2. <string>**permName** - **The name of the permission**.
+1. **IPlayer** or **BasePlayer** or \<string\>**playerID** - **The player object** or their **Id**;
+2. \<string\>**permName** - **The name of the permission**.
 
 ```csharp
 (DateTime[])TemporaryPermissions?.Call("UserGetPermissionByExpiry", player.UserIDString, "realpve.vip");
+```  
+
+### UserGetPermissionByExpiryNoAlloc
+Analogous to **UserGetPermissionByExpiry**, but in this case the array you provided is populated.  
+Returns **true** if at least one entry is added, otherwise **null**.  
+To call the **UserGetPermissionByExpiryNoAlloc** method, you need to pass 3 parameters:
+1. **IPlayer** or **BasePlayer** or \<string\>**playerID** - **The player object** or their **Id**;
+2. \<string\>**permName** - **The name of the permission**;
+3. DateTime[]**dates** - Your array to populate.
+
+```csharp
+var dates = new DateTime[2];
+(bool)(TemporaryPermissions?.Call("UserGetPermissionByExpiryNoAlloc", player.UserIDString, "realpve.vip", dates) ?? false);
 ```  
 
 ### UserGetAllPermissionsByExpiry  
@@ -451,10 +486,22 @@ Used to get **the expiration date** of **all** temporary permissions for a playe
 Returns a **Dictionary<string, DateTime[]>** where the **key is the permission name** and **the value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.  
 If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.  
 To call the **UserGetAllPermissionsByExpiry** method, you need to pass 2 parameters:
-1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**.
+1. **IPlayer** or **BasePlayer** or \<string\>**playerID** - **The player object** or their **Id**.
 
 ```csharp
 (Dictionary<string, DateTime[]>)TemporaryPermissions?.Call("UserGetAllPermissionsByExpiry", player.UserIDString);
+```  
+
+### UserGetAllPermissionsByExpiryNoAlloc
+Analogous to **UserGetAllPermissionsByExpiry**, but in this case the dictionary(**Dictionary<string, DateTime[]>**) you provided is populated.  
+Returns **true** if at least one entry is added, otherwise **null**.  
+To call the **UserGetAllPermissionsByExpiryNoAlloc** method, you need to pass 2 parameters:
+1. **IPlayer** or **BasePlayer** or \<string\>**playerID** - **The player object** or their **Id**;
+2. Dictionary<string, DateTime[]>**dict** - Your dictionary to populate.
+
+```csharp
+var dict = new Dictionary<string, DateTime[]>();
+(bool)(TemporaryPermissions?.Call("UserGetAllPermissionsByExpiryNoAlloc", player.UserIDString, dict) ?? false);
 ```  
 
 ### ActiveUsersGetAllPermissions
@@ -466,6 +513,17 @@ If **the expiration date** is set to **default**, it means the permission is val
 (Dictionary<string, Dictionary<string, DateTime[]>>)TemporaryPermissions?.Call("ActiveUsersGetAllPermissions");
 ```  
 
+### ActiveUsersGetAllPermissionsNoAlloc
+Analogous to **ActiveUsersGetAllPermissions**, but in this case the dictionary(**Dictionary<string, Dictionary<string, DateTime[]>>**) you provided is populated.  
+Returns **true** if at least one entry is added, otherwise **null**.  
+To call the **ActiveUsersGetAllPermissionsNoAlloc** method, you need to pass 1 parameter:
+1. Dictionary<string, Dictionary<string, DateTime[]>>**dict** - Your dictionary to populate.
+
+```csharp
+var dict = new Dictionary<string, Dictionary<string, DateTime[]>>();
+(bool)(TemporaryPermissions?.Call("ActiveUsersGetAllPermissionsNoAlloc", dict) ?? false);
+```  
+
 ### AllUsersGetAllPermissions
 Used to **retrieve all temporary permissions** of **all players** who **have temporary permissions**.  
 Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is userID** and the **value is another Dictionary<string, DateTime[]>**, where the **key is the permission name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.  
@@ -475,15 +533,26 @@ If **the expiration date** is set to **default**, it means the permission is val
 (Dictionary<string, Dictionary<string, DateTime[]>>)TemporaryPermissions?.Call("AllUsersGetAllPermissions");
 ```  
 
+### AllUsersGetAllPermissionsNoAlloc
+Analogous to **AllUsersGetAllPermissions**, but in this case the dictionary(**Dictionary<string, Dictionary<string, DateTime[]>>**) you provided is populated.  
+Returns **true** if at least one entry is added, otherwise **null**.  
+To call the **AllUsersGetAllPermissionsNoAlloc** method, you need to pass 1 parameter:
+1. Dictionary<string, Dictionary<string, DateTime[]>>**dict** - Your dictionary to populate.
+
+```csharp
+var dict = new Dictionary<string, Dictionary<string, DateTime[]>>();
+(bool)(TemporaryPermissions?.Call("AllUsersGetAllPermissionsNoAlloc", dict) ?? false);
+```  
+
 ### AddUserGroup
 Used to **temporarily add a player to a group**.  
 Returns **true** if the **addition was successful**.  
 To call the **AddUserGroup** method, you need to pass 5 parameters, 3 of which are optional:
-1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
-2. <string>**groupName** - **The name of the group**;
-3. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the group** will be valid **until the wipe**;
-4. <bool>**fromNow** or <DateTime>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date;
-5. <bool>**checkExistence** - **Optional**. Whether to check for the existence of the group.
+1. **IPlayer** or **BasePlayer** or \<string\>**playerID** - **The player object** or their **Id**;
+2. \<string\>**groupName** - **The name of the group**;
+3. \<int\>**secondsToAdd** or \<DateTime\>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the group** will be valid **until the wipe**;
+4. \<bool\>**fromNow** or \<DateTime\>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date;
+5. \<bool\>**checkExistence** - **Optional**. Whether to check for the existence of the group.
 
 ```csharp
 (bool)TemporaryPermissions?.Call("AddUserGroup", player.UserIDString, "vip");//Calling the AddUserGroup method without specifying the third parameter to temporarily add a player, to a group until the wipe.
@@ -496,8 +565,8 @@ To call the **AddUserGroup** method, you need to pass 5 parameters, 3 of which a
 Used to **remove a temporary group from a player**.  
 Returns **true** if the **removal was successful**.  
 To call the **RemoveUserGroup** method, you need to pass 2 parameters:
-1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
-2. <string>**groupName** - **The name of the group**.
+1. **IPlayer** or **BasePlayer** or \<string\>**playerID** - **The player object** or their **Id**;
+2. \<string\>**groupName** - **The name of the group**.
 
 ```csharp
 (bool)TemporaryPermissions?.Call("RemoveUserGroup", player.UserIDString, "vip");
@@ -507,8 +576,8 @@ To call the **RemoveUserGroup** method, you need to pass 2 parameters:
 Used to **check** if a **player has a temporary group**.  
 Returns **true** if the **player has the specified temporary group**.  
 To call the **UserHasGroup** method, you need to pass 2 parameters:
-1. **IPlayer** or **BasePlayer** or <string>**playerID** - **The player object** or their **Id**;
-2. <string>**groupName** - **The name of the group**.
+1. **IPlayer** or **BasePlayer** or \<string\>**playerID** - **The player object** or their **Id**;
+2. \<string\>**groupName** - **The name of the group**.
 
 ```csharp
 (bool)TemporaryPermissions?.Call("UserHasGroup", player.UserIDString, "vip");
@@ -516,11 +585,11 @@ To call the **UserHasGroup** method, you need to pass 2 parameters:
 
 ### AddActiveUsersGroup
 Used to **temporarily add a group** to **all online players**.  
-Returns the <int>**number of successful additions of the temporary group to players**.  
+Returns the \<int\>**number of successful additions of the temporary group to players**.  
 To call the **AddActiveUsersGroup** method, you need to pass 3 parameters, 2 of which is optional:
-1. <string>**groupName** - **The name of the group**;
-2. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the group** will be valid **until the wipe**;
-3. <bool>**fromNow** or <DateTime>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date.
+1. \<string\>**groupName** - **The name of the group**;
+2. \<int\>**secondsToAdd** or \<DateTime\>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the group** will be valid **until the wipe**;
+3. \<bool\>**fromNow** or \<DateTime\>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date.
 
 ```csharp
 (int)TemporaryPermissions?.Call("AddActiveUsersGroup", "vip");//Calling the AddActiveUsersGroup method without specifying the second parameter to temporarily add all online players to a group until the wipe.
@@ -531,11 +600,11 @@ To call the **AddActiveUsersGroup** method, you need to pass 3 parameters, 2 of 
 
 ### AddAllUsersGroup
 Used to **temporarily add a group** to **all players**.  
-Returns the <int>**number of successful additions of the temporary group to players**.  
+Returns the \<int\>**number of successful additions of the temporary group to players**.  
 To call the **AddAllUsersGroup** method, you need to pass 3 parameters, 2 of which is optional:
-1. <string>**groupName** - **The name of the group**;
-2. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the group** will be valid **until the wipe**;
-3. <bool>**fromNow** or <DateTime>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date.
+1. \<string\>**groupName** - **The name of the group**;
+2. \<int\>**secondsToAdd** or \<DateTime\>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the group** will be valid **until the wipe**;
+3. \<bool\>**fromNow** or \<DateTime\>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date.
 
 ```csharp
 (int)TemporaryPermissions?.Call("AddAllUsersGroup", "vip");//Calling the AddAllUsersGroup method without specifying the second parameter to temporarily add all players to a group until the wipe.
@@ -546,9 +615,9 @@ To call the **AddAllUsersGroup** method, you need to pass 3 parameters, 2 of whi
 
 ### RemoveActiveUsersGroup
 Used to **remove a temporary group** from **all online players**.  
-Returns the <int>**number of successful removals of temporary groups from players**.  
+Returns the \<int\>**number of successful removals of temporary groups from players**.  
 To call the **RemoveActiveUsersGroup** method, you need to pass 1 parameter:
-1. <string>**groupName** - **The name of the group**.
+1. \<string\>**groupName** - **The name of the group**.
 
 ```csharp
 (int)TemporaryPermissions?.Call("RemoveActiveUsersGroup", "vip");
@@ -556,9 +625,9 @@ To call the **RemoveActiveUsersGroup** method, you need to pass 1 parameter:
 
 ### RemoveAllUsersGroup
 Used to **remove a temporary group** from **all players**.  
-Returns the <int>**number of successful removals of temporary groups from players**.  
+Returns the \<int\>**number of successful removals of temporary groups from players**.  
 To call the **RemoveAllUsersGroup** method, you need to pass 1 parameter:
-1. <string>**permName** - **The name of the permission**.
+1. \<string\>**permName** - **The name of the permission**.
 
 ```csharp
 (int)TemporaryPermissions?.Call("RemoveAllUsersGroup", "vip");
@@ -569,14 +638,26 @@ Used to **retrieve all temporary groups** of a **player**.
 Returns a **Dictionary<string, DateTime[]>** where the **key is the group name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the group.  
 If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.  
 To call the **UserGetAllGroups** method, you need to pass 1 parameter:
-1. <string>**permName** - **The name of the permission**.
+1. \<string\>**playerID** - The player's **Id**.
 
 ```csharp
 (Dictionary<string, DateTime[]>)TemporaryPermissions?.Call("UserGetAllGroups", player.UserIDString);
 ```  
 
+### UserGetAllGroupsNoAlloc
+Analogous to **UserGetAllGroups**, but in this case the dictionary(**Dictionary<string, DateTime[]>**) you provided is populated.  
+Returns **true** if at least one entry is added, otherwise **null**.  
+To call the **UserGetAllGroupsNoAlloc** method, you need to pass 2 parameters:
+1. \<string\>**playerID** - The player's **Id**;
+2. Dictionary<string, DateTime[]>**dict** - Your dictionary to populate.
+
+```csharp
+var dict = new Dictionary<string, DateTime[]>();
+(bool)(TemporaryPermissions?.Call("UserGetAllGroupsNoAlloc", player.UserIDString, dict) ?? false);
+```  
+
 ### ActiveUsersGetAllGroups
-Used to **retrieve all temporary groups** of a **player**.  
+Used to **retrieve all temporary groups** of **all online players**.  
 Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is the group name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the group.  
 If **the expiration date** is set to **default**, it means the group is valid **until the wipe**.
 
@@ -584,13 +665,15 @@ If **the expiration date** is set to **default**, it means the group is valid **
 (Dictionary<string, Dictionary<string, DateTime[]>>)TemporaryPermissions?.Call("ActiveUsersGetAllGroups");
 ```  
 
-### ActiveUsersGetAllGroups
-Used to **retrieve all temporary groups** of **all players** who **have temporary groups**.  
-Returns a **Dictionary<string, Dictionary<string, DateTime[]>>** where the **key is userID** and the **value is another Dictionary<string, DateTime[]>**, where the **key is the group name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the group.  
-If **the expiration date** is set to **default**, it means the group is valid **until the wipe**.
+### ActiveUsersGetAllGroupsNoAlloc
+Analogous to **ActiveUsersGetAllGroups**, but in this case the dictionary(**Dictionary<string, Dictionary<string, DateTime[]>>**) you provided is populated.  
+Returns **true** if at least one entry is added, otherwise **null**.  
+To call the **ActiveUsersGetAllGroupsNoAlloc** method, you need to pass 1 parameter:
+1. Dictionary<string, Dictionary<string, DateTime[]>>**dict** - Your dictionary to populate.
 
 ```csharp
-(Dictionary<string, Dictionary<string, DateTime[]>>)TemporaryPermissions?.Call("ActiveUsersGetAllGroups");
+var dict = new Dictionary<string, Dictionary<string, DateTime[]>>();
+(bool)(TemporaryPermissions?.Call("ActiveUsersGetAllGroupsNoAlloc", dict) ?? false);
 ```  
 
 ### AllUsersGetAllGroups
@@ -602,15 +685,26 @@ If **the expiration date** is set to **default**, it means the group is valid **
 (Dictionary<string, Dictionary<string, DateTime[]>>)TemporaryPermissions?.Call("AllUsersGetAllGroups");
 ```  
 
+### AllUsersGetAllGroupsNoAlloc
+Analogous to **AllUsersGetAllGroups**, but in this case the dictionary(**Dictionary<string, Dictionary<string, DateTime[]>>**) you provided is populated.  
+Returns **true** if at least one entry is added, otherwise **null**.  
+To call the **AllUsersGetAllGroupsNoAlloc** method, you need to pass 1 parameter:
+1. Dictionary<string, Dictionary<string, DateTime[]>>**dict** - Your dictionary to populate.
+
+```csharp
+var dict = new Dictionary<string, Dictionary<string, DateTime[]>>();
+(bool)(TemporaryPermissions?.Call("AllUsersGetAllGroupsNoAlloc", dict) ?? false);
+```  
+
 ### GrantGroupPermission
 Used to **grant a temporary permission** to a **group**.  
 Returns **true** if the **grant was successful**.  
 To call the **GrantGroupPermission** method, you need to pass 5 parameters, 3 of which are optional:
-1. <string>**groupName** - **The name of the group**;
-2. <string>**permName** - **The name of the permission**;
-3. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
-4. <bool>**fromNow** or <DateTime>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date;
-5. <bool>**checkExistence** - **Optional**. Whether to check for the existence of the permission.
+1. \<string\>**groupName** - **The name of the group**;
+2. \<string\>**permName** - **The name of the permission**;
+3. \<int\>**secondsToAdd** or \<DateTime\>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
+4. \<bool\>**fromNow** or \<DateTime\>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date;
+5. \<bool\>**checkExistence** - **Optional**. Whether to check for the existence of the permission.
 
 ```csharp
 (bool)TemporaryPermissions?.Call("GrantGroupPermission", "vip", "realpve.vip");//Calling the GrantGroupPermission method without specifying the third parameter, to grant temporary permission until the wipe.
@@ -623,8 +717,8 @@ To call the **GrantGroupPermission** method, you need to pass 5 parameters, 3 of
 Used to **revoke a temporary permission** from a **group**.  
 Returns **true** if the **revoke was successful**.  
 To call the **RevokeGroupPermission** method, you need to pass 2 parameters:
-1. <string>**groupName** - **The name of the group**;
-2. <string>**permName** - **The name of the permission**.
+1. \<string\>**groupName** - **The name of the group**;
+2. \<string\>**permName** - **The name of the permission**.
 
 ```csharp
 (bool)TemporaryPermissions?.Call("RevokeGroupPermission", "vip", "realpve.vip");
@@ -634,8 +728,8 @@ To call the **RevokeGroupPermission** method, you need to pass 2 parameters:
 Used to **check** if a **group has a temporary permission**.  
 Returns **true** if the **group has the specified temporary permission**.  
 To call the **GroupHasPermission** method, you need to pass 2 parameters:
-1. <string>**groupName** - **The name of the group**;
-2. <string>**permName** - **The name of the permission**.
+1. \<string\>**groupName** - **The name of the group**;
+2. \<string\>**permName** - **The name of the permission**.
 
 ```csharp
 (bool)TemporaryPermissions?.Call("GroupHasPermission", "vip", "realpve.vip");
@@ -643,11 +737,11 @@ To call the **GroupHasPermission** method, you need to pass 2 parameters:
 
 ### GrantAllGroupsPermission
 Used to **temporarily grant a permission** to **all groups**.  
-Returns the <int>**number of successful grants of temporary permissions to groups**.  
+Returns the \<int\>**number of successful grants of temporary permissions to groups**.  
 To call the **GrantAllGroupsPermission** method, you need to pass 3 parameters, 2 of which is optional:
-1. <string>**permName** - **The name of the permission**;
-2. <int>**secondsToAdd** or <DateTime>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
-3. <bool>**fromNow** or <DateTime>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date.
+1. \<string\>**permName** - **The name of the permission**;
+2. \<int\>**secondsToAdd** or \<DateTime\>**expireDate** - **Optional**. The time in **seconds to add**, or **the end date**. If a **number less than 1** is specified, or **if this parameter is not specified**, **the permission** will be valid **until the wipe**;
+3. \<bool\>**fromNow** or \<DateTime\>**assignedDate** - **Optional**. **true/false** to specify whether the seconds should be added to the current date or to the existing time, or an exact assignment date. Defaults to the current date.
 
 ```csharp
 (int)TemporaryPermissions?.Call("GrantAllGroupsPermission", "realpve.vip");//Calling the GrantAllGroupsPermission method without specifying the second parameter, to grant all groups temporary permission until the wipe.
@@ -658,9 +752,9 @@ To call the **GrantAllGroupsPermission** method, you need to pass 3 parameters, 
 
 ### RevokeAllGroupsPermission
 Used to **revoke a temporary permission** from **all groups**.  
-Returns the <int>**number of successful revokes of temporary permissions to groups**.  
+Returns the \<int\>**number of successful revokes of temporary permissions to groups**.  
 To call the **RevokeAllGroupsPermission** method, you need to pass 1 parameter:
-1. <string>**permName** - **The name of the permission**.
+1. \<string\>**permName** - **The name of the permission**.
 
 ```csharp
 (int)TemporaryPermissions?.Call("RevokeAllGroupsPermission", "realpve.vip");
@@ -671,10 +765,22 @@ Used to **retrieve all temporary permissions** of a **group**.
 Returns a **Dictionary<string, DateTime[]>** where **the key is the permission name** and the **value is an array of 2 DateTimes**: **the first date is the assignment date** and **the second date is the expiration date** of the permission.  
 If **the expiration date** is set to **default**, it means the permission is valid **until the wipe**.  
 To call the **GroupGetAllPermissions** method, you need to pass 1 parameter:
-1. <string>**groupName** - **The name of the group**.
+1. \<string\>**groupName** - **The name of the group**.
 
 ```csharp
 (Dictionary<string, DateTime[]>)TemporaryPermissions?.Call("GroupGetAllPermissions", "vip");
+```  
+
+### GroupGetAllPermissionsNoAlloc
+Analogous to **GroupGetAllPermissions**, but in this case the dictionary(**Dictionary<string, DateTime[]>**) you provided is populated.  
+Returns **true** if at least one entry is added, otherwise **null**.  
+To call the **GroupGetAllPermissionsNoAlloc** method, you need to pass 2 parameters:
+1. \<string\>**groupName** - **The name of the group**;
+2. Dictionary<string, DateTime[]>**dict** - Your dictionary to populate.
+
+```csharp
+var dict = new Dictionary<string, DateTime[]>();
+(bool)(TemporaryPermissions?.Call("GroupGetAllPermissionsNoAlloc", "vip", dict) ?? false);
 ```  
 
 ### AllGroupsGetAllPermissions
@@ -684,4 +790,15 @@ If **the expiration date** is set to **default**, it means the permission is val
 
 ```csharp
 (Dictionary<string, Dictionary<string, DateTime[]>>)TemporaryPermissions?.Call("AllGroupsGetAllPermissions");
-```
+```  
+
+### AllGroupsGetAllPermissionsNoAlloc
+Analogous to **AllGroupsGetAllPermissions**, but in this case the dictionary(**Dictionary<string, Dictionary<string, DateTime[]>>**) you provided is populated.  
+Returns **true** if at least one entry is added, otherwise **null**.  
+To call the **AllGroupsGetAllPermissionsNoAlloc** method, you need to pass 1 parameter:
+1. Dictionary<string, Dictionary<string, DateTime[]>>**dict** - Your dictionary to populate.
+
+```csharp
+var dict = new Dictionary<string, Dictionary<string, DateTime[]>>();
+(bool)(TemporaryPermissions?.Call("AllGroupsGetAllPermissionsNoAlloc", dict) ?? false);
+```  
